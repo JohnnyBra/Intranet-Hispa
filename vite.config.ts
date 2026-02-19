@@ -5,8 +5,6 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ mode }) => {
     // Carga TODAS las vars de entorno (sin prefijo), no solo las VITE_
     const env = loadEnv(mode, '.', '');
-    const prismaKey = env.PRISMA_API_KEY || env.VITE_PRISMA_API_KEY || '';
-
     return {
       server: {
         port: 3010,
@@ -19,9 +17,9 @@ export default defineConfig(({ mode }) => {
             secure: false,
             rewrite: () => '/api/export/users',
             headers: {
-              'Authorization': `Bearer ${prismaKey}`,
-              'api_secret': prismaKey,
-              'x-api-secret': prismaKey,
+              'Authorization': `Bearer ${env.PRISMA_API_KEY}`,
+              'api_secret': env.PRISMA_API_KEY,
+              'x-api-secret': env.PRISMA_API_KEY,
             },
           },
         },
