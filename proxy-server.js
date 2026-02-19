@@ -10,6 +10,8 @@ console.log(`[${new Date().toISOString()}] Starting Prisma proxy server...`);
 console.log(`[${new Date().toISOString()}] Target URL: ${PRISMA_URL}`);
 console.log(`[${new Date().toISOString()}] API Key loaded: ${API_KEY ? 'Yes' : 'No'}`);
 
+const PRISMA_AUTH_URL = 'https://prisma.bibliohispa.es/api/auth/external-check';
+
 const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && req.url === '/api/prisma-users') {
     console.log(`[${new Date().toISOString()}] Request received: ${req.method} ${req.url}`);
@@ -41,6 +43,32 @@ const server = http.createServer(async (req, res) => {
         details: 'Check server logs for more info'
       }));
     }
+
+  } else if (req.method === 'POST' && req.url === '/api/prisma-auth') {
+    console.log(`[${new Date().toISOString()}] Request received: ${req.method} ${req.url}`);
+
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', async () => {
+      try {
+        const upstream = await fetch(PRISMA_AUTH_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body,
+        });
+
+        console.log(`[${new Date().toISOString()}] Upstream auth status: ${upstream.status}`);
+
+        const responseBody = await upstream.text();
+        res.writeHead(upstream.status, { 'Content-Type': 'application/json' });
+        res.end(responseBody);
+      } catch (err) {
+        console.error(`[${new Date().toISOString()}] Auth proxy error:`, err);
+        res.writeHead(502, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, message: err.message }));
+      }
+    });
+
   } else {
     console.log(`[${new Date().toISOString()}] 404 Not Found: ${req.url}`);
     res.writeHead(404);

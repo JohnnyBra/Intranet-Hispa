@@ -22,6 +22,12 @@ export default defineConfig(({ mode }) => {
               'x-api-secret': env.PRISMA_API_KEY,
             },
           },
+          '/api/prisma-auth': {
+            target: 'https://prisma.bibliohispa.es',
+            changeOrigin: true,
+            secure: false,
+            rewrite: () => '/api/auth/external-check',
+          },
         },
       },
       preview: {

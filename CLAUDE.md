@@ -66,12 +66,31 @@ All persistence is via `localStorage` — there is no backend or API calls. Init
 
 ### Authentication (`services/authService.ts`)
 
-Uses **Google Identity Services (GIS)** for OAuth. The login flow is:
+Two login methods are supported, both exposed via `Login.tsx`:
+
+#### 1. Google OAuth (docentes)
+Uses **Google Identity Services (GIS)**. Flow:
 1. `Login.tsx` loads the GIS script and renders the official Google Sign-In button via `google.accounts.id.renderButton`.
-2. On success, the Google JWT credential is decoded (`decodeJwt`) to extract the email.
+2. On success, the Google JWT is verified against `https://oauth2.googleapis.com/tokeninfo`.
 3. Domain check: must be `@colegiolahispanidad.es` — also enforced at the Google picker level via `hosted_domain`.
-4. The email is validated against the teacher list from `VITE_PRISMA_API_URL` (API key in `Authorization: Bearer` and `x-api-key` headers).
+4. The email is validated against the teacher list from `/api/prisma-users` (proxied to `prisma.bibliohispa.es/api/export/users`).
 5. Session stored as `hispanidad_user` in localStorage.
+
+#### 2. PIN login (admin only)
+`direccion@colegiolahispanidad.es` can log in with their Prisma PIN instead of Google. Flow:
+1. User clicks "Acceso Dirección (PIN)" link on the login screen.
+2. Enters their PIN; `loginWithPin(pin)` in `authService.ts` calls `POST /api/prisma-auth`.
+3. The proxy forwards the request to `prisma.bibliohispa.es/api/auth/external-check` with `{ username: "direccion@colegiolahispanidad.es", password: pin }`.
+4. Prisma responds `{ success: true, name, ... }` on success.
+5. Session stored with `role: 'admin'`.
+
+**Proxy routes:**
+| Route | Dev (Vite proxy) | Prod (proxy-server.js :3011) | Upstream |
+|---|---|---|---|
+| `GET /api/prisma-users` | ✓ | ✓ | `prisma.bibliohispa.es/api/export/users` |
+| `POST /api/prisma-auth` | ✓ | ✓ | `prisma.bibliohispa.es/api/auth/external-check` |
+
+In production nginx routes both `/api/prisma-users` and `/api/prisma-auth` to `proxy-server.js` on port 3011. The Vite dev proxy handles both in development.
 
 **Roles:**
 - `admin`: only `direccion@colegiolahispanidad.es`
