@@ -32,6 +32,10 @@ export default defineConfig(({ mode }) => {
             target: 'http://127.0.0.1:3011',
             changeOrigin: false,
           },
+          '/api/file': {
+            target: 'http://127.0.0.1:3011',
+            changeOrigin: false,
+          },
           '/api/data': {
             target: 'http://127.0.0.1:3011',
             changeOrigin: false,

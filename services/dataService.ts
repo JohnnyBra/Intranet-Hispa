@@ -276,6 +276,18 @@ export const createEvent = (title: string) => {
   saveToStore('hispa_events', [newEvent, ...current]);
 };
 
+export const deletePhotoFromEvent = (eventId: string, folderId: string, photoId: string) => {
+  const events = getEvents();
+  const eventIdx = events.findIndex(e => e.id === eventId);
+  if (eventIdx === -1) return;
+  const event = events[eventIdx];
+  const folderIdx = event.folders.findIndex(f => f.id === folderId);
+  if (folderIdx === -1) return;
+  event.folders[folderIdx].photos = event.folders[folderIdx].photos.filter(p => p.id !== photoId);
+  events[eventIdx] = event;
+  saveToStore('hispa_events', events);
+};
+
 export const addPhotoToEvent = (eventId: string, folderId: string, photoUrl: string, user: string) => {
   const events = getEvents();
   const eventIdx = events.findIndex(e => e.id === eventId);
