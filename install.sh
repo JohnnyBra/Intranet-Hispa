@@ -131,6 +131,17 @@ server {
         proxy_pass http://127.0.0.1:3011;
     }
 
+    location /api/upload {
+        proxy_pass http://127.0.0.1:3011;
+        client_max_body_size 50M;
+        proxy_read_timeout 120s;
+    }
+
+    location /uploads/ {
+        proxy_pass http://127.0.0.1:3011;
+        proxy_read_timeout 30s;
+    }
+
     location / {
         proxy_pass http://127.0.0.1:${APP_PORT};
         proxy_http_version 1.1;

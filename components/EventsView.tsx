@@ -57,36 +57,42 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0 && currentEvent && currentFolder) {
-      const files = Array.from(e.target.files);
-      
-      // Process all selected files
-      await Promise.all(files.map(file => {
-        return new Promise<void>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const base64String = reader.result as string;
-            // Use existing logic to maintain nomenclature and storage structure
-            addPhotoToEvent(currentEvent.id, currentFolder.id, base64String, currentUser.name);
-            resolve();
-          };
-          reader.readAsDataURL(file);
-        });
-      }));
+    if (!e.target.files || e.target.files.length === 0 || !currentEvent || !currentFolder) return;
+    const files = Array.from(e.target.files);
 
-      // Refresh local state manually for immediate feedback
-      const updatedEvents = getEvents();
-      const updatedEvent = updatedEvents.find(ev => ev.id === currentEvent.id);
-      const updatedFolder = updatedEvent?.folders.find(f => f.id === currentFolder.id);
-      
-      setEvents(updatedEvents);
-      if (updatedEvent) setCurrentEvent(updatedEvent);
-      if (updatedFolder) setCurrentFolder(updatedFolder);
-
-      // Reset the input so the same files can be selected again if needed
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+    await Promise.all(files.map(async (file) => {
+      try {
+        const res = await fetch(
+          `/api/upload?type=photo&eventId=${encodeURIComponent(currentEvent.id)}&folderId=${encodeURIComponent(currentFolder.id)}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': file.type || 'image/jpeg',
+              'X-Filename': encodeURIComponent(file.name),
+            },
+            body: file,
+          }
+        );
+        const data = await res.json();
+        if (data.success) {
+          addPhotoToEvent(currentEvent.id, currentFolder.id, data.url, currentUser.name);
+        }
+      } catch (err) {
+        console.error('Error uploading photo:', err);
       }
+    }));
+
+    // Refresh local state for immediate feedback
+    const updatedEvents = getEvents();
+    const updatedEvent = updatedEvents.find(ev => ev.id === currentEvent.id);
+    const updatedFolder = updatedEvent?.folders.find(f => f.id === currentFolder.id);
+
+    setEvents(updatedEvents);
+    if (updatedEvent) setCurrentEvent(updatedEvent);
+    if (updatedFolder) setCurrentFolder(updatedFolder);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -103,7 +109,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
 
   const downloadFolderAsZip = async () => {
     if (!currentFolder || !currentEvent || currentFolder.photos.length === 0) return;
-    
+
     setIsDownloading(true);
     try {
       const zip = new JSZip();
@@ -111,13 +117,22 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
       const imgFolder = zip.folder(folderName);
 
       if (imgFolder) {
-        currentFolder.photos.forEach((photo, index) => {
-            // Remove data:image/jpeg;base64, header to get raw base64
-            const base64Data = photo.url.split(',')[1];
-            if (base64Data) {
-                imgFolder.file(`foto_${index + 1}.jpg`, base64Data, { base64: true });
+        await Promise.all(currentFolder.photos.map(async (photo, index) => {
+          try {
+            if (photo.url.startsWith('data:')) {
+              // Legacy base64 format
+              const base64Data = photo.url.split(',')[1];
+              if (base64Data) imgFolder.file(`foto_${index + 1}.jpg`, base64Data, { base64: true });
+            } else {
+              // Server URL — fetch and add as ArrayBuffer
+              const res = await fetch(photo.url);
+              const buffer = await res.arrayBuffer();
+              imgFolder.file(`foto_${index + 1}.jpg`, buffer);
             }
-        });
+          } catch (e) {
+            console.error(`Error fetching photo ${index + 1}:`, e);
+          }
+        }));
 
         const content = await zip.generateAsync({ type: 'blob' });
         const link = document.createElement('a');

@@ -28,6 +28,14 @@ export default defineConfig(({ mode }) => {
             secure: false,
             rewrite: () => '/api/auth/external-check',
           },
+          '/api/upload': {
+            target: 'http://127.0.0.1:3011',
+            changeOrigin: false,
+          },
+          '/uploads': {
+            target: 'http://127.0.0.1:3011',
+            changeOrigin: false,
+          },
         },
       },
       preview: {
