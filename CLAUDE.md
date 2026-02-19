@@ -69,27 +69,42 @@ Metadata is persisted in `localStorage`. Uploaded files (resources, photos, dash
 
 Uploaded files are saved to `uploads/` in the app root (gitignored, persists across `git pull`/`update.sh`).
 
-**Folder structure:**
+**Folder structure and naming conventions:**
 ```
 uploads/
-  resources/{category}/          # PDFs, docs, images for section resources
-  events/{eventId}/{folderId}/   # Event photos per class folder
-  dashboard/                     # Hero banner and quick-card images (overwritten on update)
+  resources/{category}/{tituloSlug}_{timestamp}.ext
+      e.g. resources/infantil/grafomotricidad_para_3_anos_1712345678.pdf
+
+  events/{eventoSlug}/{claseSlug}/{eventoSlug}_{claseSlug}_{001}.ext
+      e.g. events/navidad_2025/3_anos_infantil_a/navidad_2025_3_anos_infantil_a_003.jpg
+
+  dashboard/{key}.jpg   (overwritten on each update)
+      e.g. dashboard/hero.jpg, dashboard/card-aulas.jpg
 ```
+
+**`slugify` helper** (defined in `EventsView.tsx` and `SectionView.tsx`):
+Strips accents → removes non-alphanumeric → lowercases. Example: `"3 años Infantil A"` → `"3_anos_infantil_a"`.
 
 **Upload API — `POST /api/upload`** (handled by `proxy-server.js` on port 3011):
 - Body: raw binary file
-- Headers: `Content-Type` (MIME type), `X-Filename` (URL-encoded original filename)
+- Headers: `Content-Type` (MIME type), `X-Filename` (URL-encoded, meaningful filename computed by the client)
+- The server uses `X-Filename` as-is (after sanitization); the client is responsible for providing readable, unique names
 - Query params determine routing:
 
 | Param | Values | Effect |
 |---|---|---|
 | `type` | `resource` (default) | saved to `uploads/resources/{category}/` |
-| `type` | `photo` | saved to `uploads/events/{eventId}/{folderId}/` |
+| `type` | `photo` | saved to `uploads/events/{eventSlug}/{classSlug}/` |
 | `type` | `dashboard` | saved to `uploads/dashboard/`, filename = `{key}.jpg` (overwrites) |
 | `category` | section id | subfolder for resources |
-| `eventId`, `folderId` | event/folder ids | subfolder for photos |
+| `eventId`, `folderId` | event/folder ids | used to update localStorage after upload |
+| `eventSlug`, `classSlug` | slugified event/class names | readable folder path for photos |
 | `key` | e.g. `hero`, `card-aulas` | filename for dashboard images |
+
+**Client-side naming logic:**
+- **Photos** (`EventsView.tsx`): `{eventoSlug}_{claseSlug}_{NNN}.ext` — `NNN` is zero-padded 3-digit sequence starting from `currentFolder.photos.length + 1`. Parallel uploads in the same batch use `baseIndex + i`.
+- **Resources** (`SectionView.tsx`): `{tituloSlug}_{Date.now()}.ext` — title slug + Unix timestamp for uniqueness.
+- **Dashboard** (`Dashboard.tsx`): key-based name (e.g. `hero.jpg`) — always overwrites.
 
 - Returns: `{ success: true, url: "/uploads/..." }` or `{ success: false, message: "..." }`
 
