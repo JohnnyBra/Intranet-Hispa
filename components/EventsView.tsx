@@ -116,12 +116,13 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
     const eventSlug  = slugify(currentEvent.title);
     const classSlug  = slugify(currentFolder.className);
     const baseIndex  = currentFolder.photos.length;
+    const timestamp  = Date.now();
 
     await Promise.all(files.map(async (file, i) => {
       try {
         const photoNumber = String(baseIndex + i + 1).padStart(3, '0');
         const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-        const filename = `${eventSlug}_${classSlug}_${photoNumber}.${ext}`;
+        const filename = `${eventSlug}_${classSlug}_${photoNumber}_${timestamp + i}.${ext}`;
 
         const res = await fetch(
           `/api/upload?type=photo` +
