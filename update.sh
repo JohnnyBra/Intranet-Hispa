@@ -17,6 +17,7 @@ warn() { echo -e "${YELLOW}[!]${NC} $1"; }
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_NAME="intranet-hispa"
 
+[ "$EUID" -ne 0 ] && echo -e "\033[0;31m[✗]\033[0m Ejecuta como root: sudo bash update.sh" && exit 1
 [ ! -f "$APP_DIR/package.json" ] && echo -e "\033[0;31m[✗]\033[0m No se encontró package.json en $APP_DIR." && exit 1
 
 echo ""
