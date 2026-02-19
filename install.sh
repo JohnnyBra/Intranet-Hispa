@@ -121,6 +121,20 @@ server {
     set_real_ip_from 198.41.128.0/17;
     real_ip_header CF-Connecting-IP;
 
+    # Proxy hacia Prisma EDU (evita CORS desde el navegador)
+    location = /api/prisma-users {
+        proxy_pass https://prisma.bibliohispa.es/api/export/users;
+        proxy_http_version 1.1;
+        proxy_ssl_server_name on;
+        proxy_set_header Host prisma.bibliohispa.es;
+        proxy_set_header Authorization "Bearer ${PRISMA_KEY}";
+        proxy_set_header api_secret "${PRISMA_KEY}";
+        proxy_set_header x-api-secret "${PRISMA_KEY}";
+        # Eliminar cabeceras de cliente que no deben llegar a Prisma
+        proxy_set_header X-Real-IP "";
+        proxy_set_header X-Forwarded-For "";
+    }
+
     location / {
         proxy_pass http://127.0.0.1:${APP_PORT};
         proxy_http_version 1.1;

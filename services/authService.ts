@@ -4,12 +4,10 @@ const ALLOWED_DOMAIN = 'colegiolahispanidad.es';
 const ADMIN_EMAIL = 'direccion@colegiolahispanidad.es';
 
 export const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string;
-const PRISMA_API_URL = import.meta.env.VITE_PRISMA_API_URL as string;
-const PRISMA_API_KEY = import.meta.env.VITE_PRISMA_API_KEY as string;
 
 /**
- * Verifica el token de Google contra la API oficial de Google (igual que Gestionaulashispa).
- * Esto valida la firma del JWT sin necesidad de backend propio.
+ * Verifica el token de Google contra la API oficial de Google.
+ * Valida la firma del JWT sin necesidad de backend propio.
  */
 const verifyGoogleToken = async (credential: string) => {
   const res = await fetch(
@@ -28,21 +26,16 @@ const verifyGoogleToken = async (credential: string) => {
 };
 
 /**
- * Obtiene la lista de emails autorizados desde la API de Prisma.
- * Lanza error si la API no es accesible (posible CORS en producción).
+ * Obtiene la lista de emails autorizados a través del proxy local (/api/prisma-users).
+ * En dev: Vite proxy → prisma.bibliohispa.es
+ * En prod: nginx proxy → prisma.bibliohispa.es
+ * La API key nunca sale del bundle del cliente.
  */
 const fetchAuthorizedEmails = async (): Promise<string[]> => {
-  const res = await fetch(PRISMA_API_URL, {
-    headers: {
-      'Authorization': `Bearer ${PRISMA_API_KEY}`,
-      'x-api-secret': PRISMA_API_KEY,
-      'api_secret': PRISMA_API_KEY,
-      'Accept': 'application/json',
-    },
-  });
+  const res = await fetch('/api/prisma-users');
 
   if (!res.ok) {
-    throw new Error(`Error al conectar con Prisma (${res.status})`);
+    throw new Error(`Error al conectar con el servidor de autenticación (${res.status})`);
   }
 
   const data = await res.json();
@@ -51,7 +44,7 @@ const fetchAuthorizedEmails = async (): Promise<string[]> => {
 };
 
 export const loginWithGoogle = async (credential: string): Promise<User> => {
-  // 1. Verificar firma del token con Google (mismo método que Gestionaulashispa)
+  // 1. Verificar firma del token con Google
   const payload = await verifyGoogleToken(credential);
 
   // 2. Verificar dominio corporativo
