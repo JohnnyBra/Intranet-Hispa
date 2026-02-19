@@ -2,7 +2,7 @@ import express from 'express';
 import { createServer } from 'http';
 import cors from 'cors';
 import { io as ClientIO } from 'socket.io-client';
-import fetch from 'node-fetch';
+// import fetch from 'node-fetch'; // REMOVED: Using native fetch
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -125,22 +125,34 @@ app.use(express.json());
 
 // Endpoint de Login con Google
 app.post('/api/auth/google', async (req, res) => {
-  const { token } = req.body;
-  if (!token) return res.status(400).json({ success: false, message: 'Token requerido' });
+  console.log(`🔑 [LOGIN] Recibida petición de login.`);
 
   try {
+    const { token } = req.body;
+    if (!token) {
+        console.warn(`⚠️ [LOGIN] Token no proporcionado.`);
+        return res.status(400).json({ success: false, message: 'Token requerido' });
+    }
+
+    console.log(`🔑 [LOGIN] Verificando token con Google...`);
     // 1. Verificar token con Google
     const googleRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${token}`);
 
+    console.log(`🔑 [LOGIN] Respuesta de Google: ${googleRes.status} ${googleRes.statusText}`);
+
     if (!googleRes.ok) {
+        const errorText = await googleRes.text();
+        console.error(`❌ [LOGIN] Google Error: ${errorText}`);
         return res.status(401).json({ success: false, message: 'Token de Google inválido' });
     }
 
     const payload = await googleRes.json();
     const email = payload.email.toLowerCase();
+    console.log(`🔑 [LOGIN] Email verificado: ${email}`);
 
     // 2. Verificar dominio (opcional, pero buena práctica)
     if (!email.endsWith(`@${ALLOWED_DOMAIN}`)) {
+        console.warn(`⛔ [LOGIN] Dominio no permitido: ${email}`);
         return res.status(403).json({ success: false, message: `Solo se permite el acceso con cuentas @${ALLOWED_DOMAIN}` });
     }
 
@@ -164,6 +176,8 @@ app.post('/api/auth/google', async (req, res) => {
                 const usersList = Array.isArray(data) ? data : (data.users || []);
                 processExternalUsers(usersList); // Actualizar cache
                 user = usersEmailMap.get(email); // Reintentar búsqueda
+            } else {
+                console.warn(`⚠️ [LOGIN] Fetch directo falló: ${upstreamResponse.status}`);
             }
         } catch (err) {
             console.error("Error en fetch directo:", err);
@@ -171,6 +185,8 @@ app.post('/api/auth/google', async (req, res) => {
     }
 
     if (user) {
+        console.log(`✅ [LOGIN] Usuario autorizado: ${user.name} (${user.role})`);
+
         // Asegurar que el avatar venga de Google si no lo tenemos, o preferirlo
         const finalUser = {
             ...user,
@@ -183,14 +199,18 @@ app.post('/api/auth/google', async (req, res) => {
         return res.json({ success: true, ...finalUser });
     }
 
+    console.warn(`⛔ [LOGIN] Usuario no encontrado en lista de profesores: ${email}`);
     return res.status(403).json({
         success: false,
         message: 'Tu cuenta no figura en la lista de profesores autorizados.'
     });
 
   } catch (e) {
-      console.error("Error en login:", e);
-      res.status(500).json({ success: false, message: 'Error interno del servidor' });
+      console.error("❌ [LOGIN] Error crítico en login:", e);
+      // Ensure we send valid JSON even on crash
+      if (!res.headersSent) {
+          res.status(500).json({ success: false, message: 'Error interno del servidor' });
+      }
   }
 });
 
