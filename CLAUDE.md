@@ -110,12 +110,18 @@ Strips accents → removes non-alphanumeric → lowercases. Example: `"3 años I
 
 **Static serving — `GET /uploads/*`**: `proxy-server.js` reads and streams the file with correct `Content-Type`. In dev, Vite proxies `/uploads` → port 3011. In production, nginx proxies `/uploads/` → port 3011.
 
+**File delete — `DELETE /api/file?path=...`** (handled by `proxy-server.js`):
+- Deletes a previously uploaded file from the server filesystem.
+- `path` must start with `/uploads/`; the server resolves it and validates it stays inside `UPLOADS_DIR` (path-traversal guard).
+- Called automatically by `handleDeleteResource` (SectionView) and `handleDeletePhoto` (EventsView) when the resource/photo URL starts with `/uploads/`. External URLs (links) have no file to delete and are skipped.
+
 **Proxy routes (full table):**
 | Route | Dev (Vite proxy) | Prod (nginx → proxy-server.js :3011) | Upstream |
 |---|---|---|---|
 | `GET /api/prisma-users` | ✓ | ✓ | `prisma.bibliohispa.es/api/export/users` |
 | `POST /api/prisma-auth` | ✓ | ✓ | `prisma.bibliohispa.es/api/auth/external-check` |
 | `POST /api/upload` | ✓ | ✓ (50M body limit) | local filesystem |
+| `DELETE /api/file` | ✓ | ✓ | local filesystem |
 | `GET /uploads/*` | ✓ | ✓ | local filesystem |
 
 **Dev note:** in development you must run `node proxy-server.js` alongside `npm run dev` for file uploads and serving to work. In production PM2 starts both processes via `ecosystem.config.cjs`.
@@ -155,6 +161,19 @@ El script de Google Identity Services se carga **dinámicamente** en `Login.tsx`
 ### Role-based permissions
 
 In `SectionView.tsx`, the constant `TEACHER_ALLOWED_SECTIONS` lists which sections teachers can upload to. Admins can upload/edit/delete everywhere and can also edit section headers (title/description inline) and create new nav sections via the modal in `App.tsx`.
+
+**Admin delete actions:**
+- **Resources**: `handleDeleteResource` in `SectionView.tsx` calls `DELETE /api/file` (if URL is a server path) then `deleteResource(id)`. Edit/delete buttons on `ResourceCard` are always visible on mobile (`opacity-100 md:opacity-0 md:group-hover:opacity-100`).
+- **Photos**: `handleDeletePhoto` in `EventsView.tsx` calls `DELETE /api/file` then `deletePhotoFromEvent`. Adjusts the lightbox index if the lightbox is open. Trash button appears in the photo hover overlay (admin only).
+
+### React state and the dataService mutation pitfall
+
+`dataService` stores data in a plain JS object (`store`). `getFromStore` returns a **direct reference** to the stored value, not a copy. If a mutation function modifies the stored object in-place (e.g. `array[i] = newItem`) and then `saveToStore` assigns the same reference back, React's `Object.is` bail-out will prevent re-renders when `setState` is called with that same reference.
+
+**Rules followed to avoid this:**
+- `addResource` and `deleteResource` create new arrays (`[item, ...arr]` / `arr.filter(...)`). ✅
+- `updateResource` spreads into a new array (`[...current]`) before modifying. ✅
+- `addPhotoToEvent` and `deletePhotoFromEvent` also keep the store events array reference stable, so components **must not** read back from the store and pass the result to `setState` directly. Instead, build fresh object references in the component using spread/map/filter before calling `setState`. ✅ (see `handlePhotoUpload` and `handleDeletePhoto` in `EventsView.tsx`)
 
 ### Theming
 
