@@ -182,30 +182,61 @@ const INITIAL_SECTIONS: SectionInfo[] = [
 
 const INITIAL_EVENTS: SchoolEvent[] = [];
 
-// --- Helpers ---
+// --- Shared data store (server-side JSON files, synced on startup) -----------
 
-const getFromStorage = <T>(key: string, defaults: T): T => {
-  const stored = localStorage.getItem(key);
-  if (!stored) return defaults;
-  try {
-    return JSON.parse(stored);
-  } catch (e) {
-    return defaults;
-  }
+// In-memory cache populated by loadAllData() at app startup
+const store: Record<string, any> = {};
+
+// Fire-and-forget save to server
+const saveToServer = (key: string, data: any): void => {
+  fetch(`/api/data?key=${key}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  }).catch(err => console.error(`[dataService] Error saving ${key}:`, err));
 };
 
-const saveToStorage = (key: string, data: any) => {
-  localStorage.setItem(key, JSON.stringify(data));
+const getFromStore = <T>(key: string, defaults: T): T =>
+  key in store ? (store[key] as T) : defaults;
+
+const saveToStore = (key: string, data: any): void => {
+  store[key] = data;
+  saveToServer(key, data);
+};
+
+/**
+ * Call once at app startup. Fetches all shared data from the server and
+ * populates the in-memory store. Components can then read synchronously.
+ */
+export const loadAllData = async (): Promise<void> => {
+  const keys = [
+    'hispa_resources',
+    'hispa_events',
+    'hispa_nav',
+    'hispa_sections',
+    'hispa_dashboard_images',
+  ];
+  await Promise.all(keys.map(async key => {
+    try {
+      const res = await fetch(`/api/data?key=${key}`);
+      if (res.ok) {
+        store[key] = await res.json();
+      }
+      // 404 = no data saved yet → store[key] stays unset → getFromStore returns defaults
+    } catch (e) {
+      console.warn(`[dataService] Could not load ${key} from server, using defaults`);
+    }
+  }));
 };
 
 // --- API ---
 
 // Resources
-export const getResources = (): Resource[] => getFromStorage<Resource[]>('hispa_resources', INITIAL_RESOURCES);
+export const getResources = (): Resource[] => getFromStore<Resource[]>('hispa_resources', INITIAL_RESOURCES);
 
 export const addResource = (resource: Resource) => {
   const current = getResources();
-  saveToStorage('hispa_resources', [resource, ...current]);
+  saveToStore('hispa_resources', [resource, ...current]);
 };
 
 export const updateResource = (resource: Resource) => {
@@ -213,17 +244,17 @@ export const updateResource = (resource: Resource) => {
   const index = current.findIndex(r => r.id === resource.id);
   if (index !== -1) {
     current[index] = resource;
-    saveToStorage('hispa_resources', current);
+    saveToStore('hispa_resources', current);
   }
 };
 
 export const deleteResource = (id: string) => {
   const current = getResources();
-  saveToStorage('hispa_resources', current.filter(r => r.id !== id));
+  saveToStore('hispa_resources', current.filter(r => r.id !== id));
 };
 
 // Events & Photos
-export const getEvents = (): SchoolEvent[] => getFromStorage<SchoolEvent[]>('hispa_events', INITIAL_EVENTS);
+export const getEvents = (): SchoolEvent[] => getFromStore<SchoolEvent[]>('hispa_events', INITIAL_EVENTS);
 
 export const createEvent = (title: string) => {
   const current = getEvents();
@@ -242,7 +273,7 @@ export const createEvent = (title: string) => {
     folders
   };
 
-  saveToStorage('hispa_events', [newEvent, ...current]);
+  saveToStore('hispa_events', [newEvent, ...current]);
 };
 
 export const addPhotoToEvent = (eventId: string, folderId: string, photoUrl: string, user: string) => {
@@ -263,32 +294,32 @@ export const addPhotoToEvent = (eventId: string, folderId: string, photoUrl: str
 
   event.folders[folderIdx].photos.push(newPhoto);
   events[eventIdx] = event;
-  saveToStorage('hispa_events', events);
+  saveToStore('hispa_events', events);
 };
 
 // Navigation
-export const getNavItems = (): NavItem[] => getFromStorage<NavItem[]>('hispa_nav', INITIAL_NAV_ITEMS);
+export const getNavItems = (): NavItem[] => getFromStore<NavItem[]>('hispa_nav', INITIAL_NAV_ITEMS);
 
 export const addNavItem = (item: NavItem) => {
   const current = getNavItems();
-  saveToStorage('hispa_nav', [...current, item]);
+  saveToStore('hispa_nav', [...current, item]);
 };
 
 // Sections Info (Headers)
 export const getSectionInfo = (id: string): SectionInfo => {
-  const sections = getFromStorage<SectionInfo[]>('hispa_sections', INITIAL_SECTIONS);
+  const sections = getFromStore<SectionInfo[]>('hispa_sections', INITIAL_SECTIONS);
   return sections.find(s => s.id === id) || { id, title: 'Sección', description: 'Gestión de recursos' };
 };
 
 export const updateSectionInfo = (info: SectionInfo) => {
-  const sections = getFromStorage<SectionInfo[]>('hispa_sections', INITIAL_SECTIONS);
+  const sections = getFromStore<SectionInfo[]>('hispa_sections', INITIAL_SECTIONS);
   const index = sections.findIndex(s => s.id === info.id);
   if (index !== -1) {
     sections[index] = info;
   } else {
     sections.push(info);
   }
-  saveToStorage('hispa_sections', sections);
+  saveToStore('hispa_sections', sections);
 };
 
 // Dashboard Images (custom uploads by admin)
@@ -300,7 +331,7 @@ interface DashboardImages {
 const DASHBOARD_IMAGES_KEY = 'hispa_dashboard_images';
 
 export const getDashboardImages = (): DashboardImages =>
-  getFromStorage<DashboardImages>(DASHBOARD_IMAGES_KEY, { cards: {} });
+  getFromStore<DashboardImages>(DASHBOARD_IMAGES_KEY, { cards: {} });
 
 export const saveDashboardImage = (key: string, dataUrl: string): void => {
   const current = getDashboardImages();
@@ -309,7 +340,7 @@ export const saveDashboardImage = (key: string, dataUrl: string): void => {
   } else {
     current.cards[key] = dataUrl;
   }
-  saveToStorage(DASHBOARD_IMAGES_KEY, current);
+  saveToStore(DASHBOARD_IMAGES_KEY, current);
 };
 
 export const getAllCategories = (): {id: string, label: string}[] => {

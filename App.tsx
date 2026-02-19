@@ -8,7 +8,7 @@ import { Login } from './components/Login';
 import { Logo } from './components/Logo';
 import { User, NavItem, ThemeMode } from './types';
 import { logout, checkSession } from './services/authService';
-import { getNavItems, addNavItem } from './services/dataService';
+import { getNavItems, addNavItem, loadAllData } from './services/dataService';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -18,10 +18,14 @@ const App: React.FC = () => {
   const [navItems, setNavItems] = useState<NavItem[]>([]);
   const [isNewSectionModalOpen, setIsNewSectionModalOpen] = useState(false);
   const [newSectionName, setNewSectionName] = useState('');
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
-  // Load Nav Items
+  // Load all shared data from server, then populate nav items
   useEffect(() => {
-    setNavItems(getNavItems());
+    loadAllData().then(() => {
+      setNavItems(getNavItems());
+      setIsDataLoaded(true);
+    });
   }, []);
 
   // Theme effect
@@ -100,6 +104,14 @@ const App: React.FC = () => {
 
     return <Dashboard onNavigate={setCurrentView} currentUser={user} />;
   };
+
+  if (!isDataLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-zinc-950">
+        <div className="w-10 h-10 border-4 border-hispa-red border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (!user) {
     return <Login onLogin={handleLogin} />;
