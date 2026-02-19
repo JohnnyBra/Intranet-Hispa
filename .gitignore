@@ -23,5 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 
-# Uploaded files (server-side storage, not tracked in git)
+# Uploaded files and server-side data store (not tracked in git)
 uploads/
+data/

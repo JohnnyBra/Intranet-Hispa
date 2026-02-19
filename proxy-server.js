@@ -13,6 +13,19 @@ const PORT = 3011;
 
 const PRISMA_AUTH_URL = 'https://prisma.bibliohispa.es/api/auth/external-check';
 
+// ── Shared data store (JSON files) ───────────────────────────────────────────
+const DATA_DIR = path.resolve(__dirname, 'data');
+fs.mkdirSync(DATA_DIR, { recursive: true });
+
+// Only these keys are allowed — prevents arbitrary file writes
+const VALID_DATA_KEYS = new Set([
+  'hispa_resources',
+  'hispa_events',
+  'hispa_nav',
+  'hispa_sections',
+  'hispa_dashboard_images',
+]);
+
 // ── File storage ─────────────────────────────────────────────────────────────
 const UPLOADS_DIR = path.resolve(__dirname, 'uploads');
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
@@ -140,6 +153,56 @@ console.log(`[${new Date().toISOString()}] API Key loaded: ${API_KEY ? 'Yes' : '
 console.log(`[${new Date().toISOString()}] Uploads directory: ${UPLOADS_DIR}`);
 
 const server = http.createServer(async (req, res) => {
+
+  // ── Shared data store: read ───────────────────────────────────────────────
+  if (req.method === 'GET' && req.url.startsWith('/api/data')) {
+    const urlObj = new URL(req.url, `http://localhost:${PORT}`);
+    const key = urlObj.searchParams.get('key') || '';
+    if (!VALID_DATA_KEYS.has(key)) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Invalid key' }));
+      return;
+    }
+    const filePath = path.join(DATA_DIR, `${key}.json`);
+    fs.readFile(filePath, 'utf8', (err, data) => {
+      if (err) {
+        // File doesn't exist yet — client will use built-in defaults
+        res.writeHead(404);
+        res.end();
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(data);
+    });
+    return;
+  }
+
+  // ── Shared data store: write ──────────────────────────────────────────────
+  if (req.method === 'POST' && req.url.startsWith('/api/data')) {
+    const urlObj = new URL(req.url, `http://localhost:${PORT}`);
+    const key = urlObj.searchParams.get('key') || '';
+    if (!VALID_DATA_KEYS.has(key)) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Invalid key' }));
+      return;
+    }
+    const filePath = path.join(DATA_DIR, `${key}.json`);
+    const chunks = [];
+    req.on('data', chunk => chunks.push(chunk));
+    req.on('end', () => {
+      fs.writeFile(filePath, Buffer.concat(chunks), err => {
+        if (err) {
+          console.error(`[${new Date().toISOString()}] Data write error (${key}):`, err);
+          res.writeHead(500);
+          res.end();
+          return;
+        }
+        res.writeHead(200);
+        res.end();
+      });
+    });
+    return;
+  }
 
   // ── Static file serving for /uploads/ ────────────────────────────────────
   if (req.method === 'GET' && req.url.startsWith('/uploads/')) {
