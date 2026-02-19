@@ -77,7 +77,7 @@ const App: React.FC = () => {
 
   const renderContent = () => {
     if (currentView === 'dashboard') {
-      return <Dashboard onNavigate={setCurrentView} />;
+      return <Dashboard onNavigate={setCurrentView} currentUser={user} />;
     }
     
     if (currentView === 'fotos-eventos') {
@@ -98,7 +98,7 @@ const App: React.FC = () => {
         return <SectionView key={currentView} sectionId={currentView} currentUser={user!} />;
     }
 
-    return <Dashboard onNavigate={setCurrentView} />;
+    return <Dashboard onNavigate={setCurrentView} currentUser={user} />;
   };
 
   if (!user) {
