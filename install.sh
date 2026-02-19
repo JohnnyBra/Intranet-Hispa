@@ -123,7 +123,7 @@ server {
 
     # Proxy hacia Prisma EDU a través del servidor Node.js local (puerto 3011)
     # Evita CORS desde el navegador y problemas de SSL en proxy nginx→HTTPS externo
-    location ~ ^/api/(auth|prisma-users) {
+    location = /api/prisma-users {
         proxy_pass http://127.0.0.1:3011;
     }
 
