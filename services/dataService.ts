@@ -291,6 +291,27 @@ export const updateSectionInfo = (info: SectionInfo) => {
   saveToStorage('hispa_sections', sections);
 };
 
+// Dashboard Images (custom uploads by admin)
+interface DashboardImages {
+  hero?: string;
+  cards: Record<string, string>;
+}
+
+const DASHBOARD_IMAGES_KEY = 'hispa_dashboard_images';
+
+export const getDashboardImages = (): DashboardImages =>
+  getFromStorage<DashboardImages>(DASHBOARD_IMAGES_KEY, { cards: {} });
+
+export const saveDashboardImage = (key: string, dataUrl: string): void => {
+  const current = getDashboardImages();
+  if (key === 'hero') {
+    current.hero = dataUrl;
+  } else {
+    current.cards[key] = dataUrl;
+  }
+  saveToStorage(DASHBOARD_IMAGES_KEY, current);
+};
+
 export const getAllCategories = (): {id: string, label: string}[] => {
   const items = getNavItems();
   const categories: {id: string, label: string}[] = [];
