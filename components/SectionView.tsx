@@ -31,6 +31,8 @@ export const SectionView: React.FC<SectionViewProps> = ({ sectionId, currentUser
   // Upload/Edit Resource Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingResource, setEditingResource] = useState<Partial<Resource> | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
@@ -128,16 +130,42 @@ export const SectionView: React.FC<SectionViewProps> = ({ sectionId, currentUser
     setIsEditingHeader(false);
   };
 
-  const handleResourceSubmit = (e: React.FormEvent) => {
+  const handleResourceSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingResource?.title) return;
+
+    let resourceUrl = editingResource.url || '#';
+
+    // Upload file if a local file was selected (non-link types)
+    if (uploadedFile && editingResource.type !== 'link' && editingResource.type !== 'video') {
+      setIsUploading(true);
+      try {
+        const res = await fetch(
+          `/api/upload?type=resource&category=${encodeURIComponent(editingResource.category || sectionId)}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': uploadedFile.type || 'application/octet-stream',
+              'X-Filename': encodeURIComponent(uploadedFile.name),
+            },
+            body: uploadedFile,
+          }
+        );
+        const data = await res.json();
+        if (data.success) resourceUrl = data.url;
+      } catch (err) {
+        console.error('File upload error:', err);
+      } finally {
+        setIsUploading(false);
+      }
+    }
 
     const resourceData: Resource = {
         id: editingResource.id || Math.random().toString(36).substr(2, 9),
         title: editingResource.title || 'Sin título',
         description: editingResource.description || '',
         type: (editingResource.type as any) || 'pdf',
-        url: editingResource.url || '#', 
+        url: resourceUrl,
         uploadedBy: editingResource.uploadedBy || currentUser.name,
         date: editingResource.date || new Date().toISOString().split('T')[0],
         category: editingResource.category || sectionId,
@@ -153,6 +181,7 @@ export const SectionView: React.FC<SectionViewProps> = ({ sectionId, currentUser
     loadResources();
     setIsModalOpen(false);
     setEditingResource(null);
+    setUploadedFile(null);
   };
 
   const handleDeleteResource = (id: string) => {
@@ -163,19 +192,21 @@ export const SectionView: React.FC<SectionViewProps> = ({ sectionId, currentUser
   };
 
   const openNewResourceModal = () => {
-    setEditingResource({ 
-        type: 'pdf', 
-        title: '', 
-        description: '', 
-        category: sectionId, 
-        courses: [], 
-        subject: '' 
+    setEditingResource({
+        type: 'pdf',
+        title: '',
+        description: '',
+        category: sectionId,
+        courses: [],
+        subject: ''
     });
+    setUploadedFile(null);
     setIsModalOpen(true);
   };
 
   const openEditResourceModal = (r: Resource) => {
     setEditingResource({ ...r });
+    setUploadedFile(null);
     setIsModalOpen(true);
   };
 
@@ -526,9 +557,13 @@ export const SectionView: React.FC<SectionViewProps> = ({ sectionId, currentUser
                                     />
                                 ) : (
                                     <div className="relative">
-                                        <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                        <input
+                                          type="file"
+                                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                          onChange={e => setUploadedFile(e.target.files?.[0] || null)}
+                                        />
                                         <div className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-zinc-800 border border-dashed border-gray-300 dark:border-zinc-600 text-sm text-gray-500 text-center truncate">
-                                            Click para seleccionar archivo
+                                            {uploadedFile ? uploadedFile.name : 'Click para seleccionar archivo'}
                                         </div>
                                     </div>
                                 )}
@@ -587,8 +622,8 @@ export const SectionView: React.FC<SectionViewProps> = ({ sectionId, currentUser
                              </div>
                         </div>
                        
-                        <button type="submit" className="w-full py-3 bg-hispa-red hover:bg-slate-700 text-white font-bold rounded-lg shadow-md transition-all mt-4">
-                            {editingResource.id ? 'Guardar Cambios' : 'Subir Recurso'}
+                        <button type="submit" disabled={isUploading} className="w-full py-3 bg-hispa-red hover:bg-slate-700 text-white font-bold rounded-lg shadow-md transition-all mt-4 disabled:opacity-60 disabled:cursor-not-allowed">
+                            {isUploading ? 'Subiendo archivo...' : (editingResource.id ? 'Guardar Cambios' : 'Subir Recurso')}
                         </button>
                     </form>
                 </motion.div>

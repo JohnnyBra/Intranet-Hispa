@@ -29,7 +29,7 @@ const processImage = (
   targetW: number,
   targetH: number,
   mode: 'cover' | 'contain',
-): Promise<string> =>
+): Promise<Blob> =>
   new Promise((resolve) => {
     const img = new window.Image();
     const url = URL.createObjectURL(file);
@@ -69,7 +69,7 @@ const processImage = (
       }
 
       URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL('image/jpeg', 0.82));
+      canvas.toBlob(blob => resolve(blob!), 'image/jpeg', 0.82);
     };
     img.src = url;
   });
@@ -132,6 +132,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
   const [editingKey, setEditingKey]     = useState<{ key: string; w: number; h: number } | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl]     = useState<string | null>(null);
+  const [previewBlob, setPreviewBlob]   = useState<Blob | null>(null);
   const [cropMode, setCropMode]         = useState<'cover' | 'contain'>('cover');
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -176,7 +177,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
   const closeModal = () => {
     setEditingKey(null);
     setSelectedFile(null);
-    setPreviewUrl(null);
+    setPreviewBlob(null);
+    setPreviewUrl(prev => {
+      if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev);
+      return null;
+    });
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -184,8 +189,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
     if (!file || !editingKey) return;
     setSelectedFile(file);
     setIsProcessing(true);
-    const result = await processImage(file, editingKey.w, editingKey.h, cropMode);
-    setPreviewUrl(result);
+    const blob = await processImage(file, editingKey.w, editingKey.h, cropMode);
+    setPreviewBlob(blob);
+    setPreviewUrl(prev => {
+      if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(blob);
+    });
     setIsProcessing(false);
   };
 
@@ -193,17 +202,42 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
     setCropMode(mode);
     if (selectedFile && editingKey) {
       setIsProcessing(true);
-      const result = await processImage(selectedFile, editingKey.w, editingKey.h, mode);
-      setPreviewUrl(result);
+      const blob = await processImage(selectedFile, editingKey.w, editingKey.h, mode);
+      setPreviewBlob(blob);
+      setPreviewUrl(prev => {
+        if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev);
+        return URL.createObjectURL(blob);
+      });
       setIsProcessing(false);
     }
   };
 
-  const handleSave = () => {
-    if (!previewUrl || !editingKey) return;
-    saveDashboardImage(editingKey.key, previewUrl);
-    setImages(prev => ({ ...prev, [editingKey.key]: previewUrl }));
-    closeModal();
+  const handleSave = async () => {
+    if (!previewBlob || !editingKey) return;
+    setIsProcessing(true);
+    try {
+      const res = await fetch(
+        `/api/upload?type=dashboard&key=${encodeURIComponent(editingKey.key)}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'image/jpeg',
+            'X-Filename': encodeURIComponent(`${editingKey.key}.jpg`),
+          },
+          body: previewBlob,
+        }
+      );
+      const data = await res.json();
+      if (data.success) {
+        saveDashboardImage(editingKey.key, data.url);
+        setImages(prev => ({ ...prev, [editingKey.key]: data.url }));
+        closeModal();
+      }
+    } catch (err) {
+      console.error('Dashboard image upload error:', err);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   // Shorthand: returns edit handler only for admins
@@ -480,7 +514,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
               {/* Save */}
               <button
                 onClick={handleSave}
-                disabled={!previewUrl || isProcessing}
+                disabled={!previewBlob || isProcessing}
                 className="mt-4 w-full py-3 bg-hispa-red text-white rounded-xl font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition flex items-center justify-center gap-2"
               >
                 <Check size={16} />

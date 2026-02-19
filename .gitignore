@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Uploaded files (server-side storage, not tracked in git)
+uploads/
