@@ -191,11 +191,18 @@ export const SectionView: React.FC<SectionViewProps> = ({ sectionId, currentUser
     setUploadedFile(null);
   };
 
-  const handleDeleteResource = (id: string) => {
-    if (confirm('¿Estás seguro de que quieres eliminar este recurso?')) {
-        deleteResource(id);
-        loadResources();
+  const handleDeleteResource = async (resource: Resource) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar este recurso?')) return;
+    // Delete file from server if it was uploaded there
+    if (resource.url.startsWith('/uploads/')) {
+      try {
+        await fetch(`/api/file?path=${encodeURIComponent(resource.url)}`, { method: 'DELETE' });
+      } catch (e) {
+        console.error('Error deleting resource file:', e);
+      }
     }
+    deleteResource(resource.id);
+    loadResources();
   };
 
   const openNewResourceModal = () => {
@@ -471,7 +478,7 @@ export const SectionView: React.FC<SectionViewProps> = ({ sectionId, currentUser
                             resource={res} 
                             isAdmin={isAdmin} 
                             onEdit={() => openEditResourceModal(res)}
-                            onDelete={() => handleDeleteResource(res.id)}
+                            onDelete={() => handleDeleteResource(res)}
                         />
                     </motion.div>
                 ))

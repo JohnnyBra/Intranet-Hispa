@@ -217,6 +217,36 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ── File delete ───────────────────────────────────────────────────────────
+  if (req.method === 'DELETE' && req.url.startsWith('/api/file')) {
+    const urlObj = new URL(req.url, `http://localhost:${PORT}`);
+    const filePath_param = decodeURIComponent(urlObj.searchParams.get('path') || '');
+    if (!filePath_param.startsWith('/uploads/')) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Invalid path' }));
+      return;
+    }
+    const relativePath = filePath_param.slice('/uploads/'.length);
+    const absPath = path.resolve(UPLOADS_DIR, relativePath);
+    if (!absPath.startsWith(UPLOADS_DIR)) {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Forbidden' }));
+      return;
+    }
+    fs.unlink(absPath, err => {
+      if (err) {
+        console.error(`[${new Date().toISOString()}] Delete error:`, err);
+        res.writeHead(err.code === 'ENOENT' ? 404 : 500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+        return;
+      }
+      console.log(`[${new Date().toISOString()}] File deleted → ${filePath_param}`);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
+    });
+    return;
+  }
+
   // ── File upload ───────────────────────────────────────────────────────────
   if (req.method === 'POST' && req.url.startsWith('/api/upload')) {
     console.log(`[${new Date().toISOString()}] Upload request: ${req.url}`);

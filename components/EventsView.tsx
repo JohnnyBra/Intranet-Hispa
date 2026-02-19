@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Folder, ArrowLeft, Image as ImageIcon, Upload, Calendar, Search, Download, Loader2, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Folder, ArrowLeft, Image as ImageIcon, Upload, Calendar, Search, Download, Loader2, X, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 
 // Rotaciones predefinidas para el efecto de fotos apiladas manualmente
 const PHOTO_ROTATIONS = [2, -3, 1.5, -2.5, 3, -1.5, 2, -2, 1, -2.5, 3.5, -1];
@@ -19,7 +19,7 @@ const photoVariants = {
   }),
 };
 import { User, SchoolEvent, ClassFolder, Photo } from '../types';
-import { getEvents, createEvent, addPhotoToEvent } from '../services/dataService';
+import { getEvents, createEvent, addPhotoToEvent, deletePhotoFromEvent } from '../services/dataService';
 import JSZip from 'jszip';
 
 // Converts any string to a safe, readable filename slug
@@ -218,6 +218,40 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
     }
   };
 
+  const handleDeletePhoto = async (photo: Photo, idx: number) => {
+    if (!currentEvent || !currentFolder) return;
+    if (!confirm('¿Eliminar esta foto? Esta acción no se puede deshacer.')) return;
+
+    // Delete file from server
+    if (photo.url.startsWith('/uploads/')) {
+      try {
+        await fetch(`/api/file?path=${encodeURIComponent(photo.url)}`, { method: 'DELETE' });
+      } catch (e) {
+        console.error('Error deleting photo file:', e);
+      }
+    }
+
+    deletePhotoFromEvent(currentEvent.id, currentFolder.id, photo.id);
+
+    // Refresh state
+    const updatedEvents = getEvents();
+    const updatedEvent = updatedEvents.find(ev => ev.id === currentEvent.id);
+    const updatedFolder = updatedEvent?.folders.find(f => f.id === currentFolder.id);
+    setEvents(updatedEvents);
+    if (updatedEvent) setCurrentEvent(updatedEvent);
+    if (updatedFolder) {
+      setCurrentFolder(updatedFolder);
+      // Adjust lightbox if open
+      if (lightboxIndex !== null) {
+        if (updatedFolder.photos.length === 0) {
+          setLightboxIndex(null);
+        } else if (idx <= lightboxIndex) {
+          setLightboxIndex(Math.max(0, lightboxIndex - 1));
+        }
+      }
+    }
+  };
+
   // --- Render Logic ---
 
   // LEVEL 3: Photo Grid (Inside a Class)
@@ -285,7 +319,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
                         <img src={photo.url} alt="Event" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
 
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-3">
-                            <div className="flex justify-end">
+                            <div className="flex justify-end gap-1.5">
                                 {canDownload && (
                                     <button
                                         onClick={(e) => { e.stopPropagation(); downloadSinglePhoto(photo, idx); }}
@@ -293,6 +327,15 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
                                         title="Descargar imagen"
                                     >
                                         <Download size={14} />
+                                    </button>
+                                )}
+                                {isAdmin && (
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleDeletePhoto(photo, idx); }}
+                                        className="p-1.5 bg-red-500/80 hover:bg-red-600 backdrop-blur-md rounded-full text-white transition-colors"
+                                        title="Eliminar foto"
+                                    >
+                                        <Trash2 size={14} />
                                     </button>
                                 )}
                             </div>

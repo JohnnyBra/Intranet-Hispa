@@ -51,7 +51,7 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({ resource, isAdmin, o
         <div className="flex flex-col items-end">
              <div className="text-xs text-gray-400">{resource.date}</div>
              {isAdmin && (
-                 <div className="flex gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                 <div className="flex gap-1 mt-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                      <button onClick={handleActionClick} className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded text-blue-500"><Pencil size={14}/></button>
                      <button onClick={handleDeleteClick} className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded text-red-500"><Trash2 size={14}/></button>
                  </div>
