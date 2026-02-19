@@ -52,15 +52,15 @@ npm run build
 log "Build completado"
 
 # ── 4. Reiniciar proceso PM2 ──────────────────────────────
-info "Reiniciando proceso PM2..."
+info "Reiniciando procesos PM2..."
 if pm2 describe "$APP_NAME" &>/dev/null; then
-  pm2 reload "$APP_NAME"
-  log "Proceso '$APP_NAME' recargado sin downtime"
+  pm2 reload ecosystem.config.cjs --update-env
+  log "Procesos recargados sin downtime"
 else
-  warn "Proceso '$APP_NAME' no encontrado en PM2. Arrancando desde el ecosistema..."
+  warn "Procesos no encontrados en PM2. Arrancando desde el ecosistema..."
   pm2 start ecosystem.config.cjs
   pm2 save
-  log "Proceso arrancado"
+  log "Procesos arrancados"
 fi
 
 echo ""
