@@ -7,7 +7,7 @@ import { EventsView } from './components/EventsView';
 import { Login } from './components/Login';
 import { Logo } from './components/Logo';
 import { User, NavItem, ThemeMode } from './types';
-import { loginWithEmail, logout, checkSession } from './services/authService';
+import { logout, checkSession } from './services/authService';
 import { getNavItems, addNavItem } from './services/dataService';
 
 const App: React.FC = () => {
@@ -49,8 +49,7 @@ const App: React.FC = () => {
     if (session) setUser(session);
   }, []);
 
-  const handleLogin = async (email: string) => {
-    const user = await loginWithEmail(email);
+  const handleLogin = (user: User) => {
     setUser(user);
     localStorage.setItem('hispanidad_user', JSON.stringify(user));
   };
