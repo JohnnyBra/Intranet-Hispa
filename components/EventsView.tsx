@@ -147,14 +147,18 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
       }
     }));
 
-    // Refresh local state for immediate feedback
-    const updatedEvents = getEvents();
-    const updatedEvent = updatedEvents.find(ev => ev.id === currentEvent.id);
-    const updatedFolder = updatedEvent?.folders.find(f => f.id === currentFolder.id);
+    // Build new object references so React detects the change and re-renders
+    const freshEvents = getEvents();
+    const freshEvent = freshEvents.find(ev => ev.id === currentEvent.id);
+    const freshFolder = freshEvent?.folders.find(f => f.id === currentFolder.id);
 
-    setEvents(updatedEvents);
-    if (updatedEvent) setCurrentEvent(updatedEvent);
-    if (updatedFolder) setCurrentFolder(updatedFolder);
+    if (freshEvent && freshFolder) {
+      const newFolder = { ...freshFolder };
+      const newEvent = { ...freshEvent, folders: freshEvent.folders.map(f => f.id === freshFolder.id ? newFolder : f) };
+      setEvents(freshEvents.map(e => e.id === freshEvent.id ? newEvent : e));
+      setCurrentEvent(newEvent);
+      setCurrentFolder(newFolder);
+    }
 
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -233,21 +237,21 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
 
     deletePhotoFromEvent(currentEvent.id, currentFolder.id, photo.id);
 
-    // Refresh state
-    const updatedEvents = getEvents();
-    const updatedEvent = updatedEvents.find(ev => ev.id === currentEvent.id);
-    const updatedFolder = updatedEvent?.folders.find(f => f.id === currentFolder.id);
-    setEvents(updatedEvents);
-    if (updatedEvent) setCurrentEvent(updatedEvent);
-    if (updatedFolder) {
-      setCurrentFolder(updatedFolder);
-      // Adjust lightbox if open
-      if (lightboxIndex !== null) {
-        if (updatedFolder.photos.length === 0) {
-          setLightboxIndex(null);
-        } else if (idx <= lightboxIndex) {
-          setLightboxIndex(Math.max(0, lightboxIndex - 1));
-        }
+    // Build new object references so React detects the change and re-renders
+    const newPhotos = currentFolder.photos.filter(p => p.id !== photo.id);
+    const newFolder = { ...currentFolder, photos: newPhotos };
+    const newFolders = currentEvent.folders.map(f => f.id === currentFolder.id ? newFolder : f);
+    const newEvent = { ...currentEvent, folders: newFolders };
+    setEvents(events.map(e => e.id === currentEvent.id ? newEvent : e));
+    setCurrentEvent(newEvent);
+    setCurrentFolder(newFolder);
+
+    // Adjust lightbox if open
+    if (lightboxIndex !== null) {
+      if (newPhotos.length === 0) {
+        setLightboxIndex(null);
+      } else if (idx <= lightboxIndex) {
+        setLightboxIndex(Math.max(0, lightboxIndex - 1));
       }
     }
   };
