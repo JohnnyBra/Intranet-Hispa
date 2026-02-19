@@ -1,4 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
+
+// Converts any string to a safe, readable filename slug
+const slugify = (s: string) =>
+  s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '').toLowerCase();
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Search, Filter, X, Pencil, Save, ChevronDown, Tag, Globe } from 'lucide-react';
 import { Resource, User, SectionInfo } from '../types';
@@ -140,13 +144,16 @@ export const SectionView: React.FC<SectionViewProps> = ({ sectionId, currentUser
     if (uploadedFile && editingResource.type !== 'link' && editingResource.type !== 'video') {
       setIsUploading(true);
       try {
+        const ext = (uploadedFile.name.split('.').pop() || 'bin').toLowerCase();
+        const slug = slugify(editingResource.title || 'recurso');
+        const filename = `${slug}_${Date.now()}.${ext}`;
         const res = await fetch(
           `/api/upload?type=resource&category=${encodeURIComponent(editingResource.category || sectionId)}`,
           {
             method: 'POST',
             headers: {
               'Content-Type': uploadedFile.type || 'application/octet-stream',
-              'X-Filename': encodeURIComponent(uploadedFile.name),
+              'X-Filename': encodeURIComponent(filename),
             },
             body: uploadedFile,
           }

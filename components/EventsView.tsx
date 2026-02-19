@@ -5,6 +5,10 @@ import { User, SchoolEvent, ClassFolder, Photo } from '../types';
 import { getEvents, createEvent, addPhotoToEvent } from '../services/dataService';
 import JSZip from 'jszip';
 
+// Converts any string to a safe, readable filename slug
+const slugify = (s: string) =>
+  s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '').toLowerCase();
+
 interface EventsViewProps {
   currentUser: User;
 }
@@ -60,15 +64,28 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
     if (!e.target.files || e.target.files.length === 0 || !currentEvent || !currentFolder) return;
     const files = Array.from(e.target.files);
 
-    await Promise.all(files.map(async (file) => {
+    // Compute slugs and starting index before parallel upload
+    const eventSlug  = slugify(currentEvent.title);
+    const classSlug  = slugify(currentFolder.className);
+    const baseIndex  = currentFolder.photos.length;
+
+    await Promise.all(files.map(async (file, i) => {
       try {
+        const photoNumber = String(baseIndex + i + 1).padStart(3, '0');
+        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+        const filename = `${eventSlug}_${classSlug}_${photoNumber}.${ext}`;
+
         const res = await fetch(
-          `/api/upload?type=photo&eventId=${encodeURIComponent(currentEvent.id)}&folderId=${encodeURIComponent(currentFolder.id)}`,
+          `/api/upload?type=photo` +
+          `&eventId=${encodeURIComponent(currentEvent.id)}` +
+          `&folderId=${encodeURIComponent(currentFolder.id)}` +
+          `&eventSlug=${encodeURIComponent(eventSlug)}` +
+          `&classSlug=${encodeURIComponent(classSlug)}`,
           {
             method: 'POST',
             headers: {
               'Content-Type': file.type || 'image/jpeg',
-              'X-Filename': encodeURIComponent(file.name),
+              'X-Filename': encodeURIComponent(filename),
             },
             body: file,
           }
@@ -101,7 +118,9 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
   const downloadSinglePhoto = (photo: Photo, index: number) => {
     const link = document.createElement('a');
     link.href = photo.url;
-    link.download = `foto_${currentEvent?.title}_${currentFolder?.className}_${index + 1}.jpg`;
+    const eventSlug = slugify(currentEvent?.title || 'evento');
+    const classSlug = slugify(currentFolder?.className || 'clase');
+    link.download = `${eventSlug}_${classSlug}_${String(index + 1).padStart(3, '0')}.jpg`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
