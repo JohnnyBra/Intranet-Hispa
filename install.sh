@@ -126,10 +126,12 @@ server {
         proxy_pass https://prisma.bibliohispa.es/api/export/users;
         proxy_http_version 1.1;
         proxy_ssl_server_name on;
+        proxy_ssl_verify off;
         proxy_set_header Host prisma.bibliohispa.es;
         proxy_set_header Authorization "Bearer ${PRISMA_KEY}";
         proxy_set_header api_secret "${PRISMA_KEY}";
         proxy_set_header x-api-secret "${PRISMA_KEY}";
+        proxy_set_header Accept "application/json";
         # Eliminar cabeceras de cliente que no deben llegar a Prisma
         proxy_set_header X-Real-IP "";
         proxy_set_header X-Forwarded-For "";
