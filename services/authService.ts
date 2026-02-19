@@ -9,7 +9,23 @@ export const loginWithGoogle = async (credential: string): Promise<User> => {
     body: JSON.stringify({ token: credential })
   });
 
-  const data = await res.json();
+  // Verify content type is JSON
+  const contentType = res.headers.get("content-type");
+  let data;
+
+  if (contentType && contentType.indexOf("application/json") !== -1) {
+    try {
+      data = await res.json();
+    } catch (e) {
+      console.error("JSON parsing error:", e);
+      throw new Error("Respuesta inválida del servidor (JSON malformado).");
+    }
+  } else {
+    // If not JSON, try to get text to debug (or just throw)
+    const text = await res.text();
+    console.error("Non-JSON response received:", text);
+    throw new Error(`Error del servidor (${res.status}): La respuesta no es válida.`);
+  }
 
   if (!res.ok) {
     throw new Error(data.message || 'Error al iniciar sesión.');
