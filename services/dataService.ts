@@ -243,8 +243,9 @@ export const updateResource = (resource: Resource) => {
   const current = getResources();
   const index = current.findIndex(r => r.id === resource.id);
   if (index !== -1) {
-    current[index] = resource;
-    saveToStore('hispa_resources', current);
+    const updated = [...current];
+    updated[index] = resource;
+    saveToStore('hispa_resources', updated);
   }
 };
 
