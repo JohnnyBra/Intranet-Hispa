@@ -1,6 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Folder, ArrowLeft, Image as ImageIcon, Upload, Calendar, Search, Download, Loader2 } from 'lucide-react';
+import { Plus, Folder, ArrowLeft, Image as ImageIcon, Upload, Calendar, Search, Download, Loader2, X, ChevronLeft, ChevronRight } from 'lucide-react';
+
+// Rotaciones predefinidas para el efecto de fotos apiladas manualmente
+const PHOTO_ROTATIONS = [2, -3, 1.5, -2.5, 3, -1.5, 2, -2, 1, -2.5, 3.5, -1];
+const getRotation = (idx: number) => PHOTO_ROTATIONS[idx % PHOTO_ROTATIONS.length];
+
+// Variantes de animación: entrar desde el borde, reposar con leve inclinación, salir lanzado
+const photoVariants = {
+  enter: ({ dir }: { dir: number; idx: number }) => ({
+    x: dir * 280, rotate: dir * 10, opacity: 0, scale: 0.88,
+  }),
+  center: ({ idx }: { dir: number; idx: number }) => ({
+    x: 0, rotate: getRotation(idx), opacity: 1, scale: 1,
+  }),
+  exit: ({ dir }: { dir: number; idx: number }) => ({
+    x: -dir * 280, rotate: -dir * 13, opacity: 0, scale: 0.82,
+  }),
+};
 import { User, SchoolEvent, ClassFolder, Photo } from '../types';
 import { getEvents, createEvent, addPhotoToEvent } from '../services/dataService';
 import JSZip from 'jszip';
@@ -23,6 +40,36 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
   const [isDownloading, setIsDownloading] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Lightbox state ─────────────────────────────────────────────────────────
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [lightboxDir, setLightboxDir] = useState(1);
+
+  const openLightbox = (idx: number) => { setLightboxDir(1); setLightboxIndex(idx); };
+  const closeLightbox = () => setLightboxIndex(null);
+  const lightboxPrev = () => {
+    if (lightboxIndex === null || !currentFolder) return;
+    setLightboxDir(-1);
+    setLightboxIndex((lightboxIndex - 1 + currentFolder.photos.length) % currentFolder.photos.length);
+  };
+  const lightboxNext = () => {
+    if (lightboxIndex === null || !currentFolder) return;
+    setLightboxDir(1);
+    setLightboxIndex((lightboxIndex + 1) % currentFolder.photos.length);
+  };
+
+  // Keyboard navigation for lightbox
+  useEffect(() => {
+    if (lightboxIndex === null || !currentFolder) return;
+    const n = currentFolder.photos.length;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight') { setLightboxDir(1);  setLightboxIndex(p => p !== null ? (p + 1) % n : 0); }
+      if (e.key === 'ArrowLeft')  { setLightboxDir(-1); setLightboxIndex(p => p !== null ? (p - 1 + n) % n : 0); }
+      if (e.key === 'Escape') setLightboxIndex(null);
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [lightboxIndex, currentFolder]);
 
   const isAdmin = currentUser.role === 'admin';
   const isSuperUser = currentUser.email === 'antonio.bermejo@colegiolahispanidad.es';
@@ -53,6 +100,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
   };
 
   const handleBack = () => {
+    setLightboxIndex(null);
     if (currentFolder) {
       setCurrentFolder(null);
     } else if (currentEvent) {
@@ -226,18 +274,19 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
         ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {currentFolder.photos.map((photo, idx) => (
-                    <motion.div 
+                    <motion.div
                         key={photo.id}
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="group relative aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-zinc-800 shadow-sm"
+                        onClick={() => openLightbox(idx)}
+                        className="group relative aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-zinc-800 shadow-sm cursor-pointer"
                     >
                         <img src={photo.url} alt="Event" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                        
+
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-3">
                             <div className="flex justify-end">
                                 {canDownload && (
-                                    <button 
+                                    <button
                                         onClick={(e) => { e.stopPropagation(); downloadSinglePhoto(photo, idx); }}
                                         className="p-1.5 bg-white/20 hover:bg-white/40 backdrop-blur-md rounded-full text-white transition-colors"
                                         title="Descargar imagen"
@@ -257,6 +306,85 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
             </div>
         )}
       </div>
+
+      {/* ── Lightbox ──────────────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {lightboxIndex !== null && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.22 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 backdrop-blur-sm"
+            onClick={closeLightbox}
+          >
+            {/* Close */}
+            <button
+              onClick={closeLightbox}
+              className="absolute top-4 right-4 z-10 p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+            >
+              <X size={22} />
+            </button>
+
+            {/* Counter */}
+            <p className="absolute top-5 left-1/2 -translate-x-1/2 text-white/50 text-sm font-medium tabular-nums select-none">
+              {lightboxIndex + 1} / {currentFolder.photos.length}
+            </p>
+
+            {/* Prev arrow */}
+            {currentFolder.photos.length > 1 && (
+              <button
+                onClick={e => { e.stopPropagation(); lightboxPrev(); }}
+                className="absolute left-3 md:left-6 z-10 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+              >
+                <ChevronLeft size={28} />
+              </button>
+            )}
+
+            {/* Photo with stacked-pile animation */}
+            <AnimatePresence custom={{ dir: lightboxDir, idx: lightboxIndex }} mode="wait">
+              <motion.div
+                key={lightboxIndex}
+                custom={{ dir: lightboxDir, idx: lightboxIndex }}
+                variants={photoVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ type: 'spring', damping: 26, stiffness: 380 }}
+                onClick={e => e.stopPropagation()}
+                className="relative rounded-2xl overflow-hidden cursor-default select-none"
+                style={{
+                  boxShadow: '0 30px 60px rgba(0,0,0,0.9), 10px 10px 0 rgba(255,255,255,0.06), 18px 18px 0 rgba(255,255,255,0.03)',
+                }}
+              >
+                <img
+                  src={currentFolder.photos[lightboxIndex].url}
+                  alt="Foto del evento"
+                  className="block max-h-[78vh] max-w-[88vw] md:max-w-[72vw] object-contain"
+                  draggable={false}
+                />
+                {/* Metadata strip */}
+                <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent">
+                  <p className="text-white text-sm font-medium">
+                    Subida por {currentFolder.photos[lightboxIndex].uploadedBy}
+                  </p>
+                  <p className="text-white/50 text-xs">{currentFolder.photos[lightboxIndex].date}</p>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+
+            {/* Next arrow */}
+            {currentFolder.photos.length > 1 && (
+              <button
+                onClick={e => { e.stopPropagation(); lightboxNext(); }}
+                className="absolute right-3 md:right-6 z-10 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+              >
+                <ChevronRight size={28} />
+              </button>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     );
   }
 
