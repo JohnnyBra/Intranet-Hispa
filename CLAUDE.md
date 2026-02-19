@@ -20,7 +20,7 @@ Scripts in the repo root:
 - **`update.sh`** — pulls latest `main`, reinstalls deps, rebuilds, reloads PM2 without downtime.
 - **`ecosystem.config.cjs`** — PM2 ecosystem file. Runs `npm run preview` (serves `dist/`) on port 3010. Uses `.cjs` extension because `package.json` has `"type": "module"`.
 
-Production architecture: Cloudflare (HTTPS) → nginx :80 (reverse proxy) → PM2/vite-preview :3010 (serves `dist/`).
+Production architecture: Cloudflare (HTTPS) → nginx :80 (reverse proxy) → PM2/vite-preview :3010 (serves `dist/`) + PM2/proxy-server.js :3011 (Prisma proxy + file upload + static `/uploads/` serving).
 
 Both `server` and `preview` sections in `vite.config.ts` are set to `port: 3010, host: '0.0.0.0'` so dev and preview use the same port.
 
@@ -57,12 +57,53 @@ Routing is purely state-based. `App.tsx` holds a `currentView: string` state. Co
 
 ### Data Layer (`services/dataService.ts`)
 
-All persistence is via `localStorage` — there is no backend or API calls. Initial seed data is defined as constants (`INITIAL_RESOURCES`, `INITIAL_NAV_ITEMS`, etc.) and loaded on first run. The service exposes CRUD functions for:
-- **Resources** (`hispa_resources`): educational materials with category, subject, and course tags
-- **Events & Photos** (`hispa_events`): school events each containing class folders with photos
+Metadata is persisted in `localStorage`. Uploaded files (resources, photos, dashboard images) are stored on the server filesystem via `proxy-server.js`. Initial seed data is defined as constants (`INITIAL_RESOURCES`, `INITIAL_NAV_ITEMS`, etc.) and loaded on first run. The service exposes CRUD functions for:
+- **Resources** (`hispa_resources`): educational materials with category, subject, and course tags. The `url` field holds either an external URL or a server path (`/uploads/resources/{category}/...`).
+- **Events & Photos** (`hispa_events`): school events each containing class folders with photos. Photo `url` is a server path (`/uploads/events/{eventId}/{folderId}/...`). Legacy entries may still hold base64 data URLs.
 - **NavItems** (`hispa_nav`): the sidebar navigation tree (supports nested `children`)
 - **Sections** (`hispa_sections`): section header metadata (title + description)
+- **Dashboard images** (`hispa_dashboard_images`): stores server paths (`/uploads/dashboard/{key}.jpg`) for the hero banner and quick-access cards. Falls back to picsum URLs if not set.
 - **Session** (`hispanidad_user`): objeto `User` serializado, gestionado por `authService.ts`
+
+### File upload (`proxy-server.js` + `/api/upload`)
+
+Uploaded files are saved to `uploads/` in the app root (gitignored, persists across `git pull`/`update.sh`).
+
+**Folder structure:**
+```
+uploads/
+  resources/{category}/          # PDFs, docs, images for section resources
+  events/{eventId}/{folderId}/   # Event photos per class folder
+  dashboard/                     # Hero banner and quick-card images (overwritten on update)
+```
+
+**Upload API — `POST /api/upload`** (handled by `proxy-server.js` on port 3011):
+- Body: raw binary file
+- Headers: `Content-Type` (MIME type), `X-Filename` (URL-encoded original filename)
+- Query params determine routing:
+
+| Param | Values | Effect |
+|---|---|---|
+| `type` | `resource` (default) | saved to `uploads/resources/{category}/` |
+| `type` | `photo` | saved to `uploads/events/{eventId}/{folderId}/` |
+| `type` | `dashboard` | saved to `uploads/dashboard/`, filename = `{key}.jpg` (overwrites) |
+| `category` | section id | subfolder for resources |
+| `eventId`, `folderId` | event/folder ids | subfolder for photos |
+| `key` | e.g. `hero`, `card-aulas` | filename for dashboard images |
+
+- Returns: `{ success: true, url: "/uploads/..." }` or `{ success: false, message: "..." }`
+
+**Static serving — `GET /uploads/*`**: `proxy-server.js` reads and streams the file with correct `Content-Type`. In dev, Vite proxies `/uploads` → port 3011. In production, nginx proxies `/uploads/` → port 3011.
+
+**Proxy routes (full table):**
+| Route | Dev (Vite proxy) | Prod (nginx → proxy-server.js :3011) | Upstream |
+|---|---|---|---|
+| `GET /api/prisma-users` | ✓ | ✓ | `prisma.bibliohispa.es/api/export/users` |
+| `POST /api/prisma-auth` | ✓ | ✓ | `prisma.bibliohispa.es/api/auth/external-check` |
+| `POST /api/upload` | ✓ | ✓ (50M body limit) | local filesystem |
+| `GET /uploads/*` | ✓ | ✓ | local filesystem |
+
+**Dev note:** in development you must run `node proxy-server.js` alongside `npm run dev` for file uploads and serving to work. In production PM2 starts both processes via `ecosystem.config.cjs`.
 
 ### Authentication (`services/authService.ts`)
 
@@ -84,13 +125,7 @@ Uses **Google Identity Services (GIS)**. Flow:
 4. Prisma responds `{ success: true, name, ... }` on success.
 5. Session stored with `role: 'admin'`.
 
-**Proxy routes:**
-| Route | Dev (Vite proxy) | Prod (proxy-server.js :3011) | Upstream |
-|---|---|---|---|
-| `GET /api/prisma-users` | ✓ | ✓ | `prisma.bibliohispa.es/api/export/users` |
-| `POST /api/prisma-auth` | ✓ | ✓ | `prisma.bibliohispa.es/api/auth/external-check` |
-
-In production nginx routes both `/api/prisma-users` and `/api/prisma-auth` to `proxy-server.js` on port 3011. The Vite dev proxy handles both in development.
+In production nginx routes `/api/prisma-users` and `/api/prisma-auth` to `proxy-server.js` on port 3011. The Vite dev proxy handles both in development. See the full proxy routes table in the **File upload** section above.
 
 **Roles:**
 - `admin`: only `direccion@colegiolahispanidad.es`
