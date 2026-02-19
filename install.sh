@@ -127,6 +127,10 @@ server {
         proxy_pass http://127.0.0.1:3011;
     }
 
+    location = /api/prisma-auth {
+        proxy_pass http://127.0.0.1:3011;
+    }
+
     location / {
         proxy_pass http://127.0.0.1:${APP_PORT};
         proxy_http_version 1.1;

@@ -72,6 +72,26 @@ export const loginWithGoogle = async (credential: string): Promise<User> => {
   };
 };
 
+export const loginWithPin = async (pin: string): Promise<User> => {
+  const res = await fetch('/api/prisma-auth', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: ADMIN_EMAIL, password: pin }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'PIN incorrecto.');
+  }
+
+  return {
+    email: ADMIN_EMAIL,
+    name: data.name || 'Dirección',
+    role: 'admin',
+  };
+};
+
 export const checkSession = (): User | null => {
   const stored = localStorage.getItem('hispanidad_user');
   return stored ? JSON.parse(stored) : null;
