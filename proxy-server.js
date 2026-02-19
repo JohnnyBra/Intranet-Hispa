@@ -65,20 +65,25 @@ const serveFile = (filePath, res) => {
 // ── Handle file upload ────────────────────────────────────────────────────────
 const handleUpload = (req, res) => {
   const urlObj = new URL(req.url, `http://localhost:${PORT}`);
-  const type     = urlObj.searchParams.get('type')     || 'resource';
-  const category = urlObj.searchParams.get('category') || 'general';
-  const eventId  = urlObj.searchParams.get('eventId')  || 'misc';
-  const folderId = urlObj.searchParams.get('folderId') || 'misc';
-  const key      = urlObj.searchParams.get('key')      || 'file';
+  const type      = urlObj.searchParams.get('type')      || 'resource';
+  const category  = urlObj.searchParams.get('category')  || 'general';
+  const eventId   = urlObj.searchParams.get('eventId')   || 'misc';
+  const folderId  = urlObj.searchParams.get('folderId')  || 'misc';
+  // Client sends already-slugified names for readable folder paths
+  const eventSlug = urlObj.searchParams.get('eventSlug') || sanitize(eventId);
+  const classSlug = urlObj.searchParams.get('classSlug') || sanitize(folderId);
+  const key       = urlObj.searchParams.get('key')       || 'file';
 
-  const rawFilename   = req.headers['x-filename'];
-  const filename      = rawFilename ? decodeURIComponent(rawFilename) : 'upload';
-  const contentType   = (req.headers['content-type'] || 'application/octet-stream').split(';')[0].trim();
+  const rawFilename = req.headers['x-filename'];
+  // Client is responsible for providing meaningful filenames; server only sanitizes
+  const filename    = rawFilename ? decodeURIComponent(rawFilename) : `upload_${Date.now()}`;
+  const contentType = (req.headers['content-type'] || 'application/octet-stream').split(';')[0].trim();
 
   // Determine subdirectory based on upload type
   let subDir;
   if (type === 'photo') {
-    subDir = path.join('events', sanitize(eventId), sanitize(folderId));
+    // Use human-readable slugs: uploads/events/{evento}/{clase}/
+    subDir = path.join('events', sanitize(eventSlug), sanitize(classSlug));
   } else if (type === 'dashboard') {
     subDir = 'dashboard';
   } else {
@@ -89,12 +94,11 @@ const handleUpload = (req, res) => {
   fs.mkdirSync(targetDir, { recursive: true });
 
   const sanitizedFilename = sanitize(filename);
-  const ext      = path.extname(sanitizedFilename) || MIME_TO_EXT[contentType] || '.bin';
-  const base     = path.basename(sanitizedFilename, ext);
-  // Dashboard images overwrite on update (no timestamp); others get unique names
+  const ext = path.extname(sanitizedFilename) || MIME_TO_EXT[contentType] || '.bin';
+  // Dashboard images overwrite previous version; all others use the filename the client provides
   const finalName = type === 'dashboard'
     ? sanitize(key) + ext
-    : `${base}_${Date.now()}${ext}`;
+    : sanitizedFilename || `upload_${Date.now()}${ext}`;
 
   const finalPath = path.resolve(targetDir, finalName);
 
