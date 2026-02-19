@@ -223,6 +223,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
   // LEVEL 3: Photo Grid (Inside a Class)
   if (currentFolder && currentEvent) {
     return (
+      <>
       <div className="p-6 max-w-7xl mx-auto">
         <div className="flex items-center gap-4 mb-6">
           <button onClick={handleBack} className="p-2 bg-white dark:bg-zinc-800 rounded-lg hover:shadow-md transition-all text-gray-600 dark:text-gray-300">
@@ -385,6 +386,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
           </motion.div>
         )}
       </AnimatePresence>
+      </>
     );
   }
 
