@@ -2,7 +2,10 @@ import http from 'http';
 import fetch from 'node-fetch';
 import fs from 'fs';
 import path from 'path';
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' });
 import { fileURLToPath } from 'url';
+import jwt from 'jsonwebtoken';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -31,27 +34,27 @@ const UPLOADS_DIR = path.resolve(__dirname, 'uploads');
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
 const MIME_TO_EXT = {
-  'image/jpeg':       '.jpg',
-  'image/png':        '.png',
-  'image/gif':        '.gif',
-  'image/webp':       '.webp',
-  'application/pdf':  '.pdf',
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/gif': '.gif',
+  'image/webp': '.webp',
+  'application/pdf': '.pdf',
   'application/msword': '.doc',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
-  'video/mp4':        '.mp4',
-  'video/webm':       '.webm',
+  'video/mp4': '.mp4',
+  'video/webm': '.webm',
 };
 
 const EXT_TO_MIME = {
-  '.jpg':  'image/jpeg',
+  '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
-  '.png':  'image/png',
-  '.gif':  'image/gif',
+  '.png': 'image/png',
+  '.gif': 'image/gif',
   '.webp': 'image/webp',
-  '.pdf':  'application/pdf',
-  '.doc':  'application/msword',
+  '.pdf': 'application/pdf',
+  '.doc': 'application/msword',
   '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  '.mp4':  'video/mp4',
+  '.mp4': 'video/mp4',
   '.webm': 'video/webm',
 };
 
@@ -67,9 +70,9 @@ const serveFile = (filePath, res) => {
     }
     const ext = path.extname(filePath).toLowerCase();
     res.writeHead(200, {
-      'Content-Type':   EXT_TO_MIME[ext] || 'application/octet-stream',
+      'Content-Type': EXT_TO_MIME[ext] || 'application/octet-stream',
       'Content-Length': stat.size,
-      'Cache-Control':  'public, max-age=31536000',
+      'Cache-Control': 'public, max-age=31536000',
     });
     fs.createReadStream(filePath).pipe(res);
   });
@@ -78,18 +81,18 @@ const serveFile = (filePath, res) => {
 // ── Handle file upload ────────────────────────────────────────────────────────
 const handleUpload = (req, res) => {
   const urlObj = new URL(req.url, `http://localhost:${PORT}`);
-  const type      = urlObj.searchParams.get('type')      || 'resource';
-  const category  = urlObj.searchParams.get('category')  || 'general';
-  const eventId   = urlObj.searchParams.get('eventId')   || 'misc';
-  const folderId  = urlObj.searchParams.get('folderId')  || 'misc';
+  const type = urlObj.searchParams.get('type') || 'resource';
+  const category = urlObj.searchParams.get('category') || 'general';
+  const eventId = urlObj.searchParams.get('eventId') || 'misc';
+  const folderId = urlObj.searchParams.get('folderId') || 'misc';
   // Client sends already-slugified names for readable folder paths
   const eventSlug = urlObj.searchParams.get('eventSlug') || sanitize(eventId);
   const classSlug = urlObj.searchParams.get('classSlug') || sanitize(folderId);
-  const key       = urlObj.searchParams.get('key')       || 'file';
+  const key = urlObj.searchParams.get('key') || 'file';
 
   const rawFilename = req.headers['x-filename'];
   // Client is responsible for providing meaningful filenames; server only sanitizes
-  const filename    = rawFilename ? decodeURIComponent(rawFilename) : `upload_${Date.now()}`;
+  const filename = rawFilename ? decodeURIComponent(rawFilename) : `upload_${Date.now()}`;
   const contentType = (req.headers['content-type'] || 'application/octet-stream').split(';')[0].trim();
 
   // Determine subdirectory based on upload type
@@ -152,7 +155,41 @@ console.log(`[${new Date().toISOString()}] Target URL: ${PRISMA_URL}`);
 console.log(`[${new Date().toISOString()}] API Key loaded: ${API_KEY ? 'Yes' : 'No'}`);
 console.log(`[${new Date().toISOString()}] Uploads directory: ${UPLOADS_DIR}`);
 
+const getCookies = (req) => {
+  const cookies = {};
+  const rc = req.headers.cookie;
+  if (rc) {
+    rc.split(';').forEach(cookie => {
+      const parts = cookie.split('=');
+      cookies[parts.shift().trim()] = decodeURI(parts.join('='));
+    });
+  }
+  return cookies;
+};
+
 const server = http.createServer(async (req, res) => {
+
+  // --- Global SSO Middleware ---
+  if (process.env.ENABLE_GLOBAL_SSO === 'true') {
+    if (req.url.startsWith('/api/') && !req.url.startsWith('/api/prisma-auth')) {
+      const cookies = getCookies(req);
+      const token = cookies.BIBLIO_SSO_TOKEN;
+      if (token) {
+        try {
+          const JWT_SSO_SECRET = process.env.JWT_SSO_SECRET || 'fallback-secret';
+          const decoded = jwt.verify(token, JWT_SSO_SECRET);
+          if (decoded.role === 'FAMILY' || decoded.role === 'STUDENT') {
+            res.writeHead(403, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: false, message: 'Acceso denegado a satélites para este rol.' }));
+            return;
+          }
+          req.ssoUser = decoded;
+        } catch (e) {
+          // Fallback, let it pass
+        }
+      }
+    }
+  }
 
   // ── Shared data store: read ───────────────────────────────────────────────
   if (req.method === 'GET' && req.url.startsWith('/api/data')) {
@@ -286,7 +323,7 @@ const server = http.createServer(async (req, res) => {
       }));
     }
 
-  // ── Prisma auth proxy ─────────────────────────────────────────────────────
+    // ── Prisma auth proxy ─────────────────────────────────────────────────────
   } else if (req.method === 'POST' && req.url === '/api/prisma-auth') {
     console.log(`[${new Date().toISOString()}] Request received: ${req.method} ${req.url}`);
 
