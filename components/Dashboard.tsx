@@ -267,10 +267,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
         {isAdmin && (
           <button
             onClick={() => openEditModal('hero', 1200, 400)}
-            className="absolute top-4 right-4 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/50 hover:bg-black/70 text-white text-xs font-medium opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all backdrop-blur-sm"
+            className="absolute top-4 right-4 z-20 p-1.5 rounded-lg bg-black/50 hover:bg-black/70 text-white opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all backdrop-blur-sm"
+            title="Cambiar imagen"
           >
-            <Pencil size={13} />
-            Cambiar imagen
+            <Pencil size={14} />
           </button>
         )}
 
