@@ -340,7 +340,15 @@ const server = http.createServer(async (req, res) => {
         console.log(`[${new Date().toISOString()}] Upstream auth status: ${upstream.status}`);
 
         const responseBody = await upstream.text();
-        res.writeHead(upstream.status, { 'Content-Type': 'application/json' });
+        const headers = { 'Content-Type': 'application/json' };
+
+        // Si Prisma envía cookies (como BIBLIO_SSO_TOKEN), retransmitírselas al cliente
+        const setCookieHeader = upstream.headers.get('set-cookie');
+        if (setCookieHeader) {
+          headers['set-cookie'] = setCookieHeader;
+        }
+
+        res.writeHead(upstream.status, headers);
         res.end(responseBody);
       } catch (err) {
         console.error(`[${new Date().toISOString()}] Auth proxy error:`, err);
@@ -348,6 +356,28 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ success: false, message: err.message }));
       }
     });
+
+    // ── SSO checks proxy ────────────────────────────────────────────────────────
+  } else if (req.method === 'GET' && req.url === '/api/proxy/me') {
+    const cookies = getCookies(req);
+    const token = cookies.BIBLIO_SSO_TOKEN;
+    if (!token) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: false, message: 'No SSO session' }));
+    }
+    try {
+      const JWT_SSO_SECRET = process.env.JWT_SSO_SECRET || 'fallback-secret';
+      const decoded = jwt.verify(token, JWT_SSO_SECRET);
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({
+        success: true,
+        user: { id: decoded.userId, name: decoded.userId, email: decoded.email, role: decoded.role }
+      }));
+    } catch (err) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: false, message: 'Invalid token' }));
+    }
 
   } else {
     console.log(`[${new Date().toISOString()}] 404 Not Found: ${req.url}`);
