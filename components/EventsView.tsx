@@ -38,6 +38,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
   const [newEventTitle, setNewEventTitle] = useState('');
   const [searchClassTerm, setSearchClassTerm] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isDownloadingEvent, setIsDownloadingEvent] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -223,6 +224,53 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
     }
   };
 
+  const downloadEventAsZip = async () => {
+    if (!currentEvent) return;
+    const foldersWithPhotos = currentEvent.folders.filter(f => f.photos.length > 0);
+    if (foldersWithPhotos.length === 0) return;
+
+    setIsDownloadingEvent(true);
+    try {
+      const zip = new JSZip();
+
+      await Promise.all(foldersWithPhotos.map(async (folder) => {
+        const folderName = folder.className;
+        const imgFolder = zip.folder(folderName);
+        if (!imgFolder) return;
+
+        await Promise.all(folder.photos.map(async (photo, index) => {
+          try {
+            if (photo.url.startsWith('data:')) {
+              const base64Data = photo.url.split(',')[1];
+              if (base64Data) imgFolder.file(`foto_${index + 1}.jpg`, base64Data, { base64: true });
+            } else {
+              const res = await fetch(photo.url);
+              const buffer = await res.arrayBuffer();
+              const ext = photo.url.split('.').pop() || 'jpg';
+              imgFolder.file(`foto_${index + 1}.${ext}`, buffer);
+            }
+          } catch (e) {
+            console.error(`Error fetching photo ${index + 1} from ${folder.className}:`, e);
+          }
+        }));
+      }));
+
+      const content = await zip.generateAsync({ type: 'blob' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(content);
+      link.download = `${currentEvent.title}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+    } catch (error) {
+      console.error("Error creating event zip", error);
+      alert("Error al comprimir las imágenes del evento.");
+    } finally {
+      setIsDownloadingEvent(false);
+    }
+  };
+
   const handleDeletePhoto = async (photo: Photo, idx: number) => {
     if (!currentEvent || !currentFolder) return;
     if (!confirm('¿Eliminar esta foto? Esta acción no se puede deshacer.')) return;
@@ -367,13 +415,24 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
             className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 backdrop-blur-sm"
             onClick={closeLightbox}
           >
-            {/* Close */}
-            <button
-              onClick={closeLightbox}
-              className="absolute top-4 right-4 z-10 p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
-            >
-              <X size={22} />
-            </button>
+            {/* Top-right controls */}
+            <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+              {canDownload && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); downloadSinglePhoto(currentFolder.photos[lightboxIndex], lightboxIndex); }}
+                  className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+                  title="Descargar foto"
+                >
+                  <Download size={20} />
+                </button>
+              )}
+              <button
+                onClick={closeLightbox}
+                className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+              >
+                <X size={22} />
+              </button>
+            </div>
 
             {/* Counter */}
             <p className="absolute top-5 left-1/2 -translate-x-1/2 text-white/50 text-sm font-medium tabular-nums select-none">
@@ -452,15 +511,27 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
             <h2 className="text-2xl font-bold text-gray-800 dark:text-white">{currentEvent.title}</h2>
             <p className="text-sm text-gray-500">{currentEvent.date} · Selecciona tu clase</p>
           </div>
-          <div className="relative">
-             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-             <input 
-                type="text" 
-                placeholder="Buscar clase..." 
-                className="pl-9 pr-4 py-2 rounded-lg bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-sm text-gray-800 dark:text-white focus:ring-2 focus:ring-hispa-blue outline-none"
-                value={searchClassTerm}
-                onChange={e => setSearchClassTerm(e.target.value)}
-             />
+          <div className="flex items-center gap-2">
+             {canDownload && currentEvent.folders.some(f => f.photos.length > 0) && (
+               <button
+                 onClick={downloadEventAsZip}
+                 disabled={isDownloadingEvent}
+                 className="bg-gray-100 hover:bg-gray-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
+               >
+                 {isDownloadingEvent ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+                 <span className="hidden md:inline">Descargar Todo</span>
+               </button>
+             )}
+             <div className="relative">
+               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+               <input
+                  type="text"
+                  placeholder="Buscar clase..."
+                  className="pl-9 pr-4 py-2 rounded-lg bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-sm text-gray-800 dark:text-white focus:ring-2 focus:ring-hispa-blue outline-none"
+                  value={searchClassTerm}
+                  onChange={e => setSearchClassTerm(e.target.value)}
+               />
+             </div>
           </div>
         </div>
 
