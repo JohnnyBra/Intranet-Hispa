@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronRight, Menu, X, LogOut, Sun, Moon, Monitor, Plus, Home, Layout, BookOpen, GraduationCap, Brain, Folder, PanelLeftClose, FileText } from 'lucide-react';
+import { ChevronDown, ChevronRight, Menu, X, LogOut, Sun, Moon, Monitor, Plus, Home, Layout, BookOpen, GraduationCap, Brain, Folder, PanelLeftClose, FileText, LayoutGrid } from 'lucide-react';
 import { NavItem, User, ThemeMode } from '../types';
 import { Logo } from './Logo';
 
@@ -189,7 +189,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
              </button>
           </div>
 
-          <button 
+          <a href="https://prisma.bibliohispa.es"
+             className="w-full flex items-center justify-center gap-2 p-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-colors font-medium mb-2"
+             title="Ir al Portal Prisma">
+            <LayoutGrid size={16} />
+            <span>Prisma</span>
+          </a>
+
+          <button
             onClick={onLogout}
             className="w-full flex items-center justify-center gap-2 p-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
           >
