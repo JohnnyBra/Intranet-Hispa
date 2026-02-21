@@ -75,10 +75,29 @@
       opacity: 0.03;
       filter: grayscale(1) invert(1) brightness(2);
     }
+
+    :root {
+      --mesh-tutor: radial-gradient(ellipse at 15% 50%, rgba(99, 102, 241, 0.12) 0%, transparent 50%),
+        radial-gradient(ellipse at 85% 30%, rgba(79, 70, 229, 0.1) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 90%, rgba(67, 56, 202, 0.08) 0%, transparent 50%),
+        linear-gradient(135deg, #f0f0ff 0%, #e8e5f5 50%, #f8fafc 100%);
+    }
+
+    .dark {
+      --mesh-tutor: radial-gradient(ellipse at 15% 50%, rgba(99, 102, 241, 0.35) 0%, transparent 50%),
+        radial-gradient(ellipse at 85% 30%, rgba(79, 70, 229, 0.3) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 90%, rgba(67, 56, 202, 0.2) 0%, transparent 50%),
+        linear-gradient(135deg, #0f0a2a 0%, #1e1b4b 50%, #0f172a 100%);
+    }
+
+    body {
+      background: var(--mesh-tutor);
+      background-attachment: fixed;
+    }
   </style>
 </head>
 
-<body class="bg-[#f0f0ff] text-slate-800 dark:bg-[#0f172a] dark:text-slate-100 transition-colors duration-300">
+<body class="text-slate-800 dark:text-slate-100 transition-colors duration-300">
   <div id="root"></div>
   <script type="module" src="/index.tsx"></script>
 </body>
