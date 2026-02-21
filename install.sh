@@ -131,6 +131,14 @@ server {
         proxy_pass http://127.0.0.1:3011;
     }
 
+    location = /api/proxy/me {
+        proxy_pass http://127.0.0.1:3011;
+    }
+
+    location = /api/auth/logout {
+        proxy_pass http://127.0.0.1:3011;
+    }
+
     location /api/upload {
         proxy_pass http://127.0.0.1:3011;
         client_max_body_size 50M;
