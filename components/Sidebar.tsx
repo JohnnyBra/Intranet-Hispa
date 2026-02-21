@@ -157,7 +157,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           
           {/* User Profile */}
           <div className="flex items-center gap-3 mb-4 px-2">
-            <img src={user?.avatar} alt="User" className="w-10 h-10 rounded-full border-2 border-white shadow-sm" />
+            <img
+              src={user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'User')}&background=random`}
+              alt="User"
+              className="w-10 h-10 rounded-full border-2 border-white shadow-sm"
+            />
             <div className="overflow-hidden">
                 <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{user?.name}</p>
                 <p className="text-xs text-gray-500 truncate flex items-center gap-1">
