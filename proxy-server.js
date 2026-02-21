@@ -394,6 +394,14 @@ const server = http.createServer(async (req, res) => {
       return res.end(JSON.stringify({ success: false, message: 'Invalid token' }));
     }
 
+  } else if (req.method === 'POST' && req.url === '/api/auth/logout') {
+    const cookieDomain = process.env.COOKIE_DOMAIN || '.bibliohispa.es';
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Set-Cookie': `BIBLIO_SSO_TOKEN=; Domain=${cookieDomain}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`
+    });
+    res.end(JSON.stringify({ success: true }));
+
   } else {
     console.log(`[${new Date().toISOString()}] 404 Not Found: ${req.url}`);
     res.writeHead(404);
