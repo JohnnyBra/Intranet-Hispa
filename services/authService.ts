@@ -99,6 +99,7 @@ export const checkSession = (): User | null => {
 
 export const logout = () => {
   localStorage.removeItem('hispanidad_user');
+  fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
   if (typeof window !== 'undefined' && (window as any).google) {
     (window as any).google.accounts.id.disableAutoSelect();
   }
