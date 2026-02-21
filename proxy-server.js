@@ -387,7 +387,7 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify({
         success: true,
-        user: { id: decoded.userId, name: decoded.userId, email: decoded.email, role: decoded.role }
+        user: { id: decoded.userId, name: decoded.name || decoded.userId, email: decoded.email, role: decoded.role }
       }));
     } catch (err) {
       res.writeHead(401, { 'Content-Type': 'application/json' });
