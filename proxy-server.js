@@ -342,10 +342,25 @@ const server = http.createServer(async (req, res) => {
         const responseBody = await upstream.text();
         const headers = { 'Content-Type': 'application/json' };
 
-        // Si Prisma envía cookies (como BIBLIO_SSO_TOKEN), retransmitírselas al cliente
-        const setCookieHeader = upstream.headers.get('set-cookie');
-        if (setCookieHeader) {
-          headers['set-cookie'] = setCookieHeader;
+        // Crear cookie SSO directamente (en vez de retransmitir de PrismaEdu)
+        if (upstream.ok && process.env.ENABLE_GLOBAL_SSO === 'true') {
+          try {
+            const parsed = JSON.parse(responseBody);
+            if (parsed.success) {
+              const user = parsed.user || parsed;
+              const rawRole = (user.role || 'TUTOR').toUpperCase();
+              const ssoRole = rawRole === 'TUTOR' ? 'TEACHER' : rawRole;
+              const parsedBody = JSON.parse(body);
+              const userEmail = (user.email || parsedBody.username || '').toLowerCase();
+              const JWT_SSO_SECRET = process.env.JWT_SSO_SECRET || 'fallback-secret';
+              const cookieDomain = process.env.COOKIE_DOMAIN || '.bibliohispa.es';
+              const ssoPayload = { userId: user.id, email: userEmail, role: ssoRole, profileId: user.id };
+              const ssoToken = jwt.sign(ssoPayload, JWT_SSO_SECRET, { expiresIn: '8h' });
+              headers['set-cookie'] = `BIBLIO_SSO_TOKEN=${ssoToken}; Domain=${cookieDomain}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=28800`;
+            }
+          } catch (e) {
+            // Ignore SSO cookie creation errors
+          }
         }
 
         res.writeHead(upstream.status, headers);
