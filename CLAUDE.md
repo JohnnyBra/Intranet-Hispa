@@ -146,6 +146,11 @@ Uses **Google Identity Services (GIS)**. Flow:
 4. Prisma responds `{ success: true, name, ... }` on success.
 5. Session stored with `role: 'admin'`.
 
+#### 3. SSO silent login
+`GET /api/proxy/me` reads the `BIBLIO_SSO_TOKEN` cookie, verifies the JWT with `JWT_SSO_SECRET`, and returns the user data. On page load, `App.tsx` calls this endpoint for auto-login before falling back to localStorage.
+
+`POST /api/prisma-auth` creates the `BIBLIO_SSO_TOKEN` cookie directly (when `ENABLE_GLOBAL_SSO=true`) after a successful PIN login, using `jwt.sign()` with `JWT_SSO_SECRET`. Since `proxy-server.js` uses raw `http.createServer` (no Express), the cookie is set as a manual `Set-Cookie` header string. Role normalization: `TUTOR` → `TEACHER`.
+
 In production nginx routes `/api/prisma-users` and `/api/prisma-auth` to `proxy-server.js` on port 3011. The Vite dev proxy handles both in development. See the full proxy routes table in the **File upload** section above.
 
 **Roles:**
