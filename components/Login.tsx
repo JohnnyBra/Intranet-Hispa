@@ -87,7 +87,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-zinc-950 p-4 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-transparent p-4 relative overflow-hidden">
 
       {/* Decoración de fondo */}
       <div className="absolute inset-0 overflow-hidden z-0">
@@ -126,9 +126,8 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 {/* El div siempre está en el DOM para que Google pueda inyectar el iframe del botón */}
                 <div
                   ref={buttonRef}
-                  className={`w-full flex justify-center transition-opacity duration-300 ${
-                    isLoading ? 'opacity-0 pointer-events-none h-0 overflow-hidden' : 'opacity-100'
-                  }`}
+                  className={`w-full flex justify-center transition-opacity duration-300 ${isLoading ? 'opacity-0 pointer-events-none h-0 overflow-hidden' : 'opacity-100'
+                    }`}
                 />
 
                 {isLoading && (

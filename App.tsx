@@ -135,7 +135,7 @@ const App: React.FC = () => {
 
   if (!isDataLoaded) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-zinc-950">
+      <div className="min-h-screen flex items-center justify-center bg-transparent">
         <div className="w-10 h-10 border-4 border-hispa-red border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -146,7 +146,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50 dark:bg-zinc-950">
+    <div className="flex min-h-screen bg-transparent">
       <Sidebar
         navItems={navItems}
         activePath={currentView}
