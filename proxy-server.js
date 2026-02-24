@@ -86,7 +86,7 @@ let archiveStatus = {
  * update the photo URLs, and delete local files.
  * @param {string[]} [eventIds] - Specific event IDs to archive. If omitted, archive all eligible.
  */
-async function runArchive(eventIds) {
+async function runArchive(eventIds, force = false) {
   if (archiveStatus.status === 'in_progress') {
     throw new Error('Archive already in progress');
   }
@@ -113,7 +113,7 @@ async function runArchive(eventIds) {
 
   const eligible = events.filter(ev => {
     if (eventIds && eventIds.length > 0 && !eventIds.includes(ev.id)) return false;
-    if (ev.date > cutoffStr) return false;
+    if (!force && ev.date > cutoffStr) return false;
     return ev.folders.some(f => f.photos.some(p => p.url.startsWith('/uploads/')));
   });
 
@@ -490,29 +490,32 @@ const server = http.createServer(async (req, res) => {
 
   // ── Archive: trigger ─────────────────────────────────────────────────────
   if (req.method === 'POST' && req.url.startsWith('/api/archive')) {
-    // Admin-only: check SSO token
-    if (!req.ssoUser || (req.ssoUser.role !== 'ADMIN' && req.ssoUser.role !== 'DIRECCION' && req.ssoUser.role !== 'TEACHER')) {
-      // Fallback: also accept if no SSO but request comes from localhost (cron)
-      const isLocalhost = req.socket.remoteAddress === '127.0.0.1' || req.socket.remoteAddress === '::1';
-      if (!isLocalhost) {
-        res.writeHead(403, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Admin access required' }));
-        return;
-      }
+    // In production, requests arrive via nginx from localhost so they're trusted.
+    // With SSO enabled, also verify role. Without SSO, allow localhost requests
+    // (covers both cron and frontend-via-proxy).
+    const isLocalhost = req.socket.remoteAddress === '127.0.0.1' || req.socket.remoteAddress === '::1' || req.socket.remoteAddress === '::ffff:127.0.0.1';
+    if (!isLocalhost && (!req.ssoUser || (req.ssoUser.role !== 'ADMIN' && req.ssoUser.role !== 'DIRECCION' && req.ssoUser.role !== 'TEACHER'))) {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Admin access required' }));
+      return;
     }
 
     const chunks = [];
     req.on('data', chunk => chunks.push(chunk));
     req.on('end', () => {
       let eventIds;
+      let force = false;
       try {
         const body = JSON.parse(Buffer.concat(chunks).toString() || '{}');
         eventIds = body.eventIds;
+        force = body.force === true;
       } catch { eventIds = undefined; }
 
       // Start archive asynchronously
-      runArchive(eventIds).catch(err => {
+      runArchive(eventIds, force).catch(err => {
         console.error(`[archive] runArchive error:`, err.message);
+        archiveStatus.status = 'error';
+        archiveStatus.errors.push({ photoId: '', error: err.message });
       });
 
       res.writeHead(200, { 'Content-Type': 'application/json' });

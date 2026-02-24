@@ -93,13 +93,9 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
 
   // ── Archive helpers ────────────────────────────────────────────────────────
 
-  const isArchiveEligible = (event: SchoolEvent): boolean => {
-    const eventDate = new Date(event.date);
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - ARCHIVE_DAYS_THRESHOLD);
-    return eventDate < cutoff && event.folders.some(f =>
-      f.photos.some(p => p.url.startsWith('/uploads/'))
-    );
+  /** Event has at least one photo stored locally on the server */
+  const hasLocalPhotos = (event: SchoolEvent): boolean => {
+    return event.folders.some(f => f.photos.some(p => p.url.startsWith('/uploads/')));
   };
 
   const hasArchivedPhotos = (event: SchoolEvent): boolean => {
@@ -114,19 +110,21 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
     return count;
   };
 
-  const handleArchiveEvent = async (eventId?: string) => {
+  const handleArchiveEvent = async (eventId?: string, force = false) => {
     if (!confirm(eventId
       ? '¿Archivar las fotos de este evento en Google Drive? Las fotos se moverán a la nube y se liberará espacio en el servidor.'
-      : '¿Archivar TODOS los eventos elegibles (más de 30 días) en Google Drive?'
+      : '¿Archivar TODOS los eventos con fotos locales en Google Drive?'
     )) return;
 
     setShowArchiveModal(true);
     try {
-      const body = eventId ? JSON.stringify({ eventIds: [eventId] }) : '{}';
+      const body: Record<string, unknown> = {};
+      if (eventId) body.eventIds = [eventId];
+      if (force) body.force = true;
       await fetch('/api/archive', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body,
+        body: JSON.stringify(body),
       });
       // Start polling
       pollArchiveStatus();
@@ -658,11 +656,11 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
           <p className="text-gray-500 dark:text-gray-400 mt-1">Colección fotográfica de actividades del centro.</p>
         </div>
         <div className="flex items-center gap-2">
-          {isAdmin && events.some(isArchiveEligible) && (
+          {isAdmin && events.some(hasLocalPhotos) && (
             <button
-              onClick={() => handleArchiveEvent()}
+              onClick={() => handleArchiveEvent(undefined, true)}
               className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg shadow-lg transition-colors flex items-center gap-2"
-              title="Archivar todos los eventos elegibles en Google Drive"
+              title="Archivar todos los eventos con fotos locales en Google Drive"
             >
               <CloudUpload size={20} />
               <span className="hidden md:inline">Archivar en Drive</span>
@@ -724,9 +722,9 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
                                 <Cloud size={10} /> En Drive
                               </span>
                             )}
-                            {isAdmin && isArchiveEligible(event) && (
+                            {isAdmin && hasLocalPhotos(event) && (
                               <button
-                                onClick={(e) => { e.stopPropagation(); handleArchiveEvent(event.id); }}
+                                onClick={(e) => { e.stopPropagation(); handleArchiveEvent(event.id, true); }}
                                 className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/50 px-2 py-0.5 rounded-full flex items-center gap-1 transition-colors"
                                 title={`Archivar ${countLocalPhotos(event)} fotos en Google Drive`}
                               >
