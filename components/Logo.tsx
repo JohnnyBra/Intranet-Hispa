@@ -3,7 +3,7 @@ import React from 'react';
 export const Logo: React.FC<{ className?: string, showText?: boolean }> = ({ className = "", showText = true }) => {
   return (
     <div className={`flex items-center gap-3 ${className}`}>
-      <div className="relative w-10 h-10 shrink-0 bg-white rounded-xl flex items-center justify-center shadow-md ring-1 ring-black/5 dark:ring-white/10">
+      <div className="relative w-10 h-10 shrink-0 bg-hispa-red/10 dark:bg-white/10 rounded-xl flex items-center justify-center ring-1 ring-hispa-red/20 dark:ring-white/15">
         <img src="/logo.png" alt="Logo" className="h-7 w-auto object-contain" />
       </div>
       

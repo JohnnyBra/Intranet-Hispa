@@ -163,7 +163,7 @@ const App: React.FC = () => {
         className={`flex-1 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'md:ml-72' : 'ml-0'}`}
       >
         {/* Universal Header (Mobile & Desktop) */}
-        <div className="sticky top-0 z-30 flex items-center justify-between p-4 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-b border-gray-200 dark:border-zinc-800">
+        <div className="sticky top-0 z-30 flex items-center justify-between p-4 bg-white/55 dark:bg-zinc-950/55 backdrop-blur-xl border-b border-gray-200/50 dark:border-zinc-700/40">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
