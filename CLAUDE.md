@@ -188,6 +188,14 @@ Brand colors are defined in `index.html` inside the inline `tailwind.config` scr
 
 Dark mode uses Tailwind's `class` strategy. `App.tsx` manages toggling the `dark` class on `<html>` based on the `ThemeMode` state (`'light' | 'dark' | 'system'`).
 
+### Unified Header
+
+Intranet is the **reference implementation** for the unified header design shared across apps (Aulas, Excursiones, Biblio). The header in `App.tsx` uses the `.header-glass` CSS class (defined in `index.html`) with:
+- **Logo**: `components/Logo.tsx` — `h-10` with `dark:brightness-0 dark:invert` for theme adaptation
+- **3-button theme toggle**: Sun / Monitor / Moon (Light / System / Dark) with `text-hispa-red` for the active state
+- **Prisma link**: SVG icon (4 squares, top-right filled `#3b82f6`), links to `https://prisma.bibliohispa.es`
+- **`.header-glass`** CSS: `rgba(255,255,255,0.45)` background with `backdrop-filter: blur(24px) saturate(1.6)`, dark variant `rgba(5,5,20,0.45)`. Defined in pure CSS (not Tailwind) because Tailwind CDN does not reliably generate arbitrary opacity values like `bg-white/55`.
+
 ### NavItem icons
 
 `NavItem.iconName` stores a Lucide icon name as a string (e.g. `'Home'`, `'Brain'`). The `Sidebar` component resolves this string to the actual Lucide component at render time.
