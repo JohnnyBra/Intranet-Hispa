@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Sun, Moon, Monitor } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { SectionView } from './components/SectionView';
@@ -155,8 +155,6 @@ const App: React.FC = () => {
         onLogout={handleLogout}
         isOpen={isSidebarOpen}
         setIsOpen={setIsSidebarOpen}
-        theme={theme}
-        setTheme={setTheme}
         onAddSection={() => setIsNewSectionModalOpen(true)}
       />
 
@@ -178,8 +176,48 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          {/* Header Actions (Optional spacer or other tools) */}
-          <div className="w-8" />
+          {/* Header Actions: Theme toggle + Prisma link */}
+          <div className="flex items-center gap-2">
+            {/* Theme Toggle */}
+            <div className="flex bg-gray-200 dark:bg-zinc-800 rounded-lg p-0.5">
+              <button
+                onClick={() => setTheme('light')}
+                className={`flex justify-center p-1.5 rounded-md text-sm transition-colors ${theme === 'light' ? 'bg-white text-hispa-red shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                title="Modo claro"
+              >
+                <Sun size={14} />
+              </button>
+              <button
+                onClick={() => setTheme('system')}
+                className={`flex justify-center p-1.5 rounded-md text-sm transition-colors ${theme === 'system' ? 'bg-white dark:bg-zinc-700 text-hispa-red shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                title="Automático"
+              >
+                <Monitor size={14} />
+              </button>
+              <button
+                onClick={() => setTheme('dark')}
+                className={`flex justify-center p-1.5 rounded-md text-sm transition-colors ${theme === 'dark' ? 'bg-zinc-700 text-hispa-red shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                title="Modo oscuro"
+              >
+                <Moon size={14} />
+              </button>
+            </div>
+
+            {/* Prisma Link */}
+            <a
+              href="https://prisma.bibliohispa.es"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-colors font-medium"
+              title="Ir al Portal Prisma"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect width="7" height="7" x="3" y="3" rx="1" />
+                <rect width="7" height="7" x="14" y="3" rx="1" fill="#3b82f6" stroke="#3b82f6" />
+                <rect width="7" height="7" x="14" y="14" rx="1" />
+                <rect width="7" height="7" x="3" y="14" rx="1" />
+              </svg>
+              <span className="hidden sm:inline">Prisma</span>
+            </a>
+          </div>
         </div>
 
         <main className="p-0 min-h-[calc(100vh-64px)]">

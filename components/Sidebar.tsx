@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronRight, Menu, X, LogOut, Sun, Moon, Monitor, Plus, Home, Layout, BookOpen, GraduationCap, Brain, Folder, PanelLeftClose, FileText, LayoutGrid } from 'lucide-react';
-import { NavItem, User, ThemeMode } from '../types';
+import { ChevronDown, ChevronRight, Menu, X, LogOut, Plus, Home, Layout, BookOpen, GraduationCap, Brain, Folder, PanelLeftClose, FileText, LayoutGrid } from 'lucide-react';
+import { NavItem, User } from '../types';
 import { Logo } from './Logo';
 
 interface SidebarProps {
@@ -12,8 +12,6 @@ interface SidebarProps {
   onLogout: () => void;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  theme: ThemeMode;
-  setTheme: (theme: ThemeMode) => void;
   onAddSection?: () => void;
 }
 
@@ -96,7 +94,7 @@ const NavItemComponent: React.FC<{
 };
 
 export const Sidebar: React.FC<SidebarProps> = ({
-  navItems, activePath, onNavigate, user, onLogout, isOpen, setIsOpen, theme, setTheme, onAddSection
+  navItems, activePath, onNavigate, user, onLogout, isOpen, setIsOpen, onAddSection
 }) => {
   return (
     <>
@@ -171,40 +169,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </p>
               </div>
             </div>
-
-            {/* Theme Toggle */}
-            <div className="flex bg-gray-200 dark:bg-zinc-800 rounded-lg p-1 mb-3">
-              <button
-                onClick={() => setTheme('light')}
-                className={`flex-1 flex justify-center p-1.5 rounded-md text-sm ${theme === 'light' ? 'bg-white text-hispa-red shadow-sm' : 'text-gray-500'}`}
-              >
-                <Sun size={16} />
-              </button>
-              <button
-                onClick={() => setTheme('system')}
-                className={`flex-1 flex justify-center p-1.5 rounded-md text-sm ${theme === 'system' ? 'bg-white dark:bg-zinc-700 text-hispa-red shadow-sm' : 'text-gray-500'}`}
-              >
-                <Monitor size={16} />
-              </button>
-              <button
-                onClick={() => setTheme('dark')}
-                className={`flex-1 flex justify-center p-1.5 rounded-md text-sm ${theme === 'dark' ? 'bg-zinc-700 text-hispa-red shadow-sm' : 'text-gray-500'}`}
-              >
-                <Moon size={16} />
-              </button>
-            </div>
-
-            <a href="https://prisma.bibliohispa.es"
-              className="w-full flex items-center justify-center gap-2 p-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-colors font-medium mb-2"
-              title="Ir al Portal Prisma">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect width="7" height="7" x="3" y="3" rx="1" />
-                <rect width="7" height="7" x="14" y="3" rx="1" fill="#3b82f6" stroke="#3b82f6" />
-                <rect width="7" height="7" x="14" y="14" rx="1" />
-                <rect width="7" height="7" x="3" y="14" rx="1" />
-              </svg>
-              <span>Prisma</span>
-            </a>
 
             <button
               onClick={onLogout}
