@@ -1,35 +1,40 @@
 import { google } from 'googleapis';
 import fs from 'fs';
-import path from 'path';
 
 let driveClient = null;
 
 /**
- * Initialize Google Drive client with service account credentials.
+ * Initialize Google Drive client using OAuth2 with a refresh token.
+ * This approach uploads files as a real user (eventos@) who has storage quota,
+ * avoiding the "Service Accounts do not have storage quota" limitation.
+ *
+ * Required env vars:
+ *   GOOGLE_CLIENT_ID          — OAuth2 client ID
+ *   GOOGLE_CLIENT_SECRET      — OAuth2 client secret
+ *   GOOGLE_DRIVE_REFRESH_TOKEN — Refresh token obtained via drive-auth-setup.js
+ *
  * Returns true if successfully initialized, false otherwise.
  */
 export function initDrive() {
-  const credentialsJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-  const credentialsPath = process.env.GOOGLE_SERVICE_ACCOUNT_PATH;
+  const clientId = process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_DRIVE_REFRESH_TOKEN;
 
-  let credentials;
+  if (!clientId || !clientSecret || !refreshToken) {
+    const missing = [];
+    if (!clientId) missing.push('GOOGLE_CLIENT_ID');
+    if (!clientSecret) missing.push('GOOGLE_CLIENT_SECRET');
+    if (!refreshToken) missing.push('GOOGLE_DRIVE_REFRESH_TOKEN');
+    console.warn(`[drive-service] Not configured (missing: ${missing.join(', ')}). Run "node drive-auth-setup.js" to set up.`);
+    return false;
+  }
+
   try {
-    if (credentialsJson) {
-      credentials = JSON.parse(credentialsJson);
-    } else if (credentialsPath) {
-      const absPath = path.resolve(credentialsPath);
-      credentials = JSON.parse(fs.readFileSync(absPath, 'utf8'));
-    } else {
-      console.warn('[drive-service] No service account credentials configured');
-      return false;
-    }
+    const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
 
-    const auth = new google.auth.GoogleAuth({
-      credentials,
-      scopes: ['https://www.googleapis.com/auth/drive.file'],
-    });
-    driveClient = google.drive({ version: 'v3', auth });
-    console.log(`[${new Date().toISOString()}] [drive-service] Google Drive client initialized`);
+    driveClient = google.drive({ version: 'v3', auth: oauth2Client });
+    console.log(`[${new Date().toISOString()}] [drive-service] Google Drive client initialized (OAuth2)`);
     return true;
   } catch (err) {
     console.error(`[${new Date().toISOString()}] [drive-service] Init error:`, err.message);
@@ -49,7 +54,6 @@ export function isDriveReady() {
  * Returns the folder ID.
  */
 export async function findOrCreateFolder(name, parentId) {
-  // Search for existing folder
   const query = `name='${name.replace(/'/g, "\\'")}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
   const list = await driveClient.files.list({
     q: query,
@@ -61,7 +65,6 @@ export async function findOrCreateFolder(name, parentId) {
     return list.data.files[0].id;
   }
 
-  // Create new folder
   const fileMetadata = {
     name,
     mimeType: 'application/vnd.google-apps.folder',
@@ -79,18 +82,15 @@ export async function findOrCreateFolder(name, parentId) {
  * Returns { fileId }.
  */
 export async function uploadFile(localPath, fileName, mimeType, parentFolderId) {
-  const fileMetadata = {
-    name: fileName,
-    parents: [parentFolderId],
-  };
-  const media = {
-    mimeType,
-    body: fs.createReadStream(localPath),
-  };
-
   const res = await driveClient.files.create({
-    requestBody: fileMetadata,
-    media,
+    requestBody: {
+      name: fileName,
+      parents: [parentFolderId],
+    },
+    media: {
+      mimeType,
+      body: fs.createReadStream(localPath),
+    },
     fields: 'id',
   });
 
@@ -126,11 +126,4 @@ export async function getFileStream(fileId) {
     stream: res.data,
     contentType: res.headers['content-type'] || 'application/octet-stream',
   };
-}
-
-/**
- * Get the Drive client instance (for advanced operations).
- */
-export function getDriveClient() {
-  return driveClient;
 }
