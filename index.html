@@ -53,6 +53,18 @@
       background: #475569;
     }
 
+    /* ============ GLASS HEADER ============ */
+    .header-glass {
+      background: rgba(255, 255, 255, 0.45);
+      backdrop-filter: blur(24px) saturate(1.6);
+      -webkit-backdrop-filter: blur(24px) saturate(1.6);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+    }
+    .dark .header-glass {
+      background: rgba(5, 5, 20, 0.45);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
     /* ============ WATERMARK LOGO ============ */
     body::after {
       content: "";
