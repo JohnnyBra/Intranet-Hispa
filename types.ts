@@ -23,9 +23,22 @@ export interface Resource {
 
 export interface Photo {
   id: string;
-  url: string; // Base64 or URL
+  url: string; // Base64, /uploads/... or Google Drive URL
   uploadedBy: string;
   date: string;
+  driveFileId?: string;
+  archived?: boolean;
+}
+
+export interface ArchiveStatus {
+  status: 'idle' | 'in_progress' | 'completed' | 'error';
+  total: number;
+  processed: number;
+  failed: number;
+  currentEvent?: string;
+  errors: { photoId: string; error: string }[];
+  startedAt?: string;
+  completedAt?: string;
 }
 
 export interface ClassFolder {

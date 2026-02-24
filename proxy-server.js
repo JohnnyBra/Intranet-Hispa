@@ -6,6 +6,8 @@ import dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 import { fileURLToPath } from 'url';
 import jwt from 'jsonwebtoken';
+import cron from 'node-cron';
+import { initDrive, isDriveReady, findOrCreateFolder, uploadFile, getDriveImageUrl, getFileStream } from './drive-service.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -59,6 +61,201 @@ const EXT_TO_MIME = {
 };
 
 const sanitize = s => String(s).replace(/[^a-zA-Z0-9._-]/g, '_').substring(0, 80);
+
+// ── Google Drive archive ─────────────────────────────────────────────────────
+const DRIVE_FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID || '';
+const ARCHIVE_DAYS = parseInt(process.env.ARCHIVE_DAYS_THRESHOLD || '30', 10);
+
+// Initialize Drive client (non-blocking — warns if not configured)
+const driveReady = initDrive();
+
+// Archive status (module-level singleton — only one archive at a time)
+let archiveStatus = {
+  status: 'idle',
+  total: 0,
+  processed: 0,
+  failed: 0,
+  currentEvent: '',
+  errors: [],
+  startedAt: null,
+  completedAt: null,
+};
+
+/**
+ * Run the archive process: upload local event photos to Google Drive,
+ * update the photo URLs, and delete local files.
+ * @param {string[]} [eventIds] - Specific event IDs to archive. If omitted, archive all eligible.
+ */
+async function runArchive(eventIds) {
+  if (archiveStatus.status === 'in_progress') {
+    throw new Error('Archive already in progress');
+  }
+  if (!isDriveReady()) {
+    throw new Error('Google Drive not configured');
+  }
+  if (!DRIVE_FOLDER_ID) {
+    throw new Error('GOOGLE_DRIVE_FOLDER_ID not set');
+  }
+
+  // Load events from JSON
+  const eventsPath = path.join(DATA_DIR, 'hispa_events.json');
+  let events;
+  try {
+    events = JSON.parse(fs.readFileSync(eventsPath, 'utf8'));
+  } catch {
+    throw new Error('Cannot read hispa_events.json');
+  }
+
+  // Filter eligible events
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - ARCHIVE_DAYS);
+  const cutoffStr = cutoffDate.toISOString().split('T')[0];
+
+  const eligible = events.filter(ev => {
+    if (eventIds && eventIds.length > 0 && !eventIds.includes(ev.id)) return false;
+    if (ev.date > cutoffStr) return false;
+    return ev.folders.some(f => f.photos.some(p => p.url.startsWith('/uploads/')));
+  });
+
+  // Count total photos to process
+  let totalPhotos = 0;
+  for (const ev of eligible) {
+    for (const folder of ev.folders) {
+      totalPhotos += folder.photos.filter(p => p.url.startsWith('/uploads/')).length;
+    }
+  }
+
+  archiveStatus = {
+    status: 'in_progress',
+    total: totalPhotos,
+    processed: 0,
+    failed: 0,
+    currentEvent: '',
+    errors: [],
+    startedAt: new Date().toISOString(),
+    completedAt: null,
+  };
+
+  console.log(`[${new Date().toISOString()}] [archive] Starting: ${eligible.length} events, ${totalPhotos} photos`);
+
+  try {
+    for (const ev of eligible) {
+      archiveStatus.currentEvent = ev.title;
+      let eventDriveFolderId;
+
+      try {
+        eventDriveFolderId = await findOrCreateFolder(ev.title, DRIVE_FOLDER_ID);
+      } catch (err) {
+        console.error(`[archive] Failed to create Drive folder for event "${ev.title}":`, err.message);
+        // Mark all photos in this event as failed
+        for (const folder of ev.folders) {
+          for (const photo of folder.photos) {
+            if (photo.url.startsWith('/uploads/')) {
+              archiveStatus.failed++;
+              archiveStatus.processed++;
+              archiveStatus.errors.push({ photoId: photo.id, error: `Event folder creation failed: ${err.message}` });
+            }
+          }
+        }
+        continue;
+      }
+
+      for (const folder of ev.folders) {
+        const localPhotos = folder.photos.filter(p => p.url.startsWith('/uploads/'));
+        if (localPhotos.length === 0) continue;
+
+        let classDriveFolderId;
+        try {
+          classDriveFolderId = await findOrCreateFolder(folder.className, eventDriveFolderId);
+        } catch (err) {
+          console.error(`[archive] Failed to create Drive folder for class "${folder.className}":`, err.message);
+          for (const photo of localPhotos) {
+            archiveStatus.failed++;
+            archiveStatus.processed++;
+            archiveStatus.errors.push({ photoId: photo.id, error: `Class folder creation failed: ${err.message}` });
+          }
+          continue;
+        }
+
+        for (const photo of localPhotos) {
+          try {
+            const relativePath = photo.url.slice('/uploads/'.length);
+            const localPath = path.resolve(UPLOADS_DIR, relativePath);
+
+            if (!fs.existsSync(localPath)) {
+              console.warn(`[archive] File not found: ${localPath}, updating URL anyway`);
+              archiveStatus.processed++;
+              continue;
+            }
+
+            // Determine MIME type from extension
+            const ext = path.extname(localPath).toLowerCase();
+            const mimeType = EXT_TO_MIME[ext] || 'application/octet-stream';
+            const fileName = path.basename(localPath);
+
+            // Upload to Drive
+            const { fileId } = await uploadFile(localPath, fileName, mimeType, classDriveFolderId);
+
+            // Update photo data
+            photo.driveFileId = fileId;
+            photo.url = getDriveImageUrl(fileId);
+            photo.archived = true;
+
+            // Delete local file
+            try {
+              fs.unlinkSync(localPath);
+            } catch (unlinkErr) {
+              if (unlinkErr.code !== 'ENOENT') {
+                console.warn(`[archive] Could not delete local file: ${unlinkErr.message}`);
+              }
+            }
+
+            archiveStatus.processed++;
+            console.log(`[archive] ${archiveStatus.processed}/${archiveStatus.total} - Archived: ${fileName}`);
+          } catch (err) {
+            archiveStatus.failed++;
+            archiveStatus.processed++;
+            archiveStatus.errors.push({ photoId: photo.id, error: err.message });
+            console.error(`[archive] Failed to archive photo ${photo.id}:`, err.message);
+          }
+
+          // Save events JSON after each photo (incremental persistence)
+          try {
+            fs.writeFileSync(eventsPath, JSON.stringify(events, null, 2));
+          } catch (saveErr) {
+            console.error(`[archive] Failed to save events JSON:`, saveErr.message);
+          }
+        }
+
+        // Try to clean up empty local directories
+        try {
+          const classDir = path.resolve(UPLOADS_DIR, 'events', sanitize(ev.title), sanitize(folder.className));
+          if (fs.existsSync(classDir)) {
+            const remaining = fs.readdirSync(classDir);
+            if (remaining.length === 0) fs.rmdirSync(classDir);
+          }
+        } catch { /* ignore cleanup errors */ }
+      }
+
+      // Try to clean up empty event directory
+      try {
+        const eventDir = path.resolve(UPLOADS_DIR, 'events', sanitize(ev.title));
+        if (fs.existsSync(eventDir)) {
+          const remaining = fs.readdirSync(eventDir);
+          if (remaining.length === 0) fs.rmdirSync(eventDir);
+        }
+      } catch { /* ignore */ }
+    }
+
+    archiveStatus.status = 'completed';
+    archiveStatus.completedAt = new Date().toISOString();
+    console.log(`[${new Date().toISOString()}] [archive] Completed: ${archiveStatus.processed - archiveStatus.failed} archived, ${archiveStatus.failed} failed`);
+  } catch (err) {
+    archiveStatus.status = 'error';
+    archiveStatus.completedAt = new Date().toISOString();
+    console.error(`[${new Date().toISOString()}] [archive] Fatal error:`, err.message);
+  }
+}
 
 // ── Serve a static file ───────────────────────────────────────────────────────
 const serveFile = (filePath, res) => {
@@ -291,6 +488,75 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ── Archive: trigger ─────────────────────────────────────────────────────
+  if (req.method === 'POST' && req.url.startsWith('/api/archive')) {
+    // Admin-only: check SSO token
+    if (!req.ssoUser || (req.ssoUser.role !== 'ADMIN' && req.ssoUser.role !== 'DIRECCION' && req.ssoUser.role !== 'TEACHER')) {
+      // Fallback: also accept if no SSO but request comes from localhost (cron)
+      const isLocalhost = req.socket.remoteAddress === '127.0.0.1' || req.socket.remoteAddress === '::1';
+      if (!isLocalhost) {
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Admin access required' }));
+        return;
+      }
+    }
+
+    const chunks = [];
+    req.on('data', chunk => chunks.push(chunk));
+    req.on('end', () => {
+      let eventIds;
+      try {
+        const body = JSON.parse(Buffer.concat(chunks).toString() || '{}');
+        eventIds = body.eventIds;
+      } catch { eventIds = undefined; }
+
+      // Start archive asynchronously
+      runArchive(eventIds).catch(err => {
+        console.error(`[archive] runArchive error:`, err.message);
+      });
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'started', total: archiveStatus.total }));
+    });
+    return;
+  }
+
+  // ── Archive: status ─────────────────────────────────────────────────────
+  if (req.method === 'GET' && req.url === '/api/archive/status') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(archiveStatus));
+    return;
+  }
+
+  // ── Drive proxy: stream a Drive file to avoid CORS ──────────────────────
+  if (req.method === 'GET' && req.url.startsWith('/api/drive-proxy')) {
+    const urlObj = new URL(req.url, `http://localhost:${PORT}`);
+    const fileId = urlObj.searchParams.get('fileId');
+    if (!fileId || !/^[a-zA-Z0-9_-]+$/.test(fileId)) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Invalid fileId' }));
+      return;
+    }
+    if (!isDriveReady()) {
+      res.writeHead(503, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Google Drive not configured' }));
+      return;
+    }
+    try {
+      const { stream, contentType } = await getFileStream(fileId);
+      res.writeHead(200, {
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=86400',
+      });
+      stream.pipe(res);
+    } catch (err) {
+      const status = err.code === 404 ? 404 : 502;
+      res.writeHead(status, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
   // ── Prisma users proxy ────────────────────────────────────────────────────
   if (req.method === 'GET' && req.url === '/api/prisma-users') {
     console.log(`[${new Date().toISOString()}] Request received: ${req.method} ${req.url}`);
@@ -415,4 +681,19 @@ server.on('error', (err) => {
 
 server.listen(PORT, '127.0.0.1', () => {
   console.log(`[${new Date().toISOString()}] Proxy + upload server listening on http://127.0.0.1:${PORT}`);
+
+  // ── Monthly archive cron ─────────────────────────────────────────────────
+  if (process.env.ARCHIVE_CRON_ENABLED === 'true' && isDriveReady() && DRIVE_FOLDER_ID) {
+    // Run at 03:00 on the 1st of each month
+    cron.schedule('0 3 1 * *', async () => {
+      console.log(`[${new Date().toISOString()}] [cron] Starting monthly photo archive...`);
+      try {
+        await runArchive();
+        console.log(`[${new Date().toISOString()}] [cron] Monthly archive finished.`);
+      } catch (err) {
+        console.error(`[${new Date().toISOString()}] [cron] Archive failed:`, err.message);
+      }
+    });
+    console.log(`[${new Date().toISOString()}] Monthly archive cron scheduled (1st of month, 03:00)`);
+  }
 });
