@@ -380,10 +380,10 @@ export const SectionView: React.FC<SectionViewProps> = ({ sectionId, currentUser
                                     Nuevo Gem
                                 </div>
                                 <h4 className="text-3xl lg:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-pink-600 dark:from-indigo-400 dark:to-pink-400">
-                                    Asistente de IA educativa en primaria
+                                    Asistente de IA educativa en Primaria
                                 </h4>
                                 <p className="text-gray-600 dark:text-gray-300 text-lg leading-relaxed max-w-2xl">
-                                    Descubre nuestro asistente especializado de Gemini personalizado. Optimiza tu planificación de clases, genera ideas innovadoras y obtén respuestas específicas para tus necesidades educativas.
+                                    Descubre nuestro asistente especializado de Gemini personalizado. Genera Situaciones de Aprendizaje secuenciadas minuto a minuto, cuadernos de recursos para el alumnado, guías de evaluación detalladas, presentaciones interactivas para las pizarras... Y todo ello contextualizado en nuestro barrio y en nuestro colegio de La Hispanidad.
                                 </p>
                                 <div className="pt-4 flex flex-wrap gap-4">
                                     <a
