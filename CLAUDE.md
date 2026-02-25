@@ -123,33 +123,8 @@ Strips accents → removes non-alphanumeric → lowercases. Example: `"3 años I
 | `POST /api/upload` | ✓ | ✓ (50M body limit) | local filesystem |
 | `DELETE /api/file` | ✓ | ✓ | local filesystem |
 | `GET /uploads/*` | ✓ | ✓ | local filesystem |
-| `POST /api/archive` | ✓ | ✓ | triggers Drive archive |
-| `GET /api/archive/status` | ✓ | ✓ | archive progress |
-| `GET /api/drive-proxy?fileId=` | ✓ | ✓ | streams file from Google Drive |
 
 **Dev note:** in development you must run `node proxy-server.js` alongside `npm run dev` for file uploads and serving to work. In production PM2 starts both processes via `ecosystem.config.cjs`.
-
-### Google Drive Photo Archive
-
-Event photos can be archived to Google Drive to free server storage. After archival, photos are served from `lh3.googleusercontent.com` and downloads go through `/api/drive-proxy` to bypass CORS.
-
-**Architecture:**
-- `drive-service.js` — Google Drive API wrapper (service account auth, folder management, file upload)
-- `proxy-server.js` — `runArchive()` orchestrates the process; cron runs on 1st of month at 03:00
-- `EventsView.tsx` — "Archivar en Drive" button (admin only), progress modal, cloud badge on archived photos
-
-**Archive flow:**
-1. Load events from `data/hispa_events.json`
-2. Filter events older than `ARCHIVE_DAYS_THRESHOLD` days with local photos (`/uploads/...`)
-3. For each photo: upload to Drive → set public permissions → update `photo.url` to Drive URL → delete local file
-4. Events JSON is saved incrementally after each photo (crash-safe)
-
-**Photo type after archive:**
-```typescript
-{ url: "https://lh3.googleusercontent.com/d/{fileId}", driveFileId: "{fileId}", archived: true }
-```
-
-**Setup:** Create a Google Cloud service account, enable Drive API, share a Drive folder with the service account email, configure env vars in `.env.local` (see `.env.example`).
 
 ### Authentication (`services/authService.ts`)
 

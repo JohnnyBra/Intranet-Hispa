@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Folder, ArrowLeft, Image as ImageIcon, Upload, Calendar, Search, Download, Loader2, X, ChevronLeft, ChevronRight, Trash2, Cloud, CloudUpload } from 'lucide-react';
+import { Plus, Folder, ArrowLeft, Image as ImageIcon, Upload, Calendar, Search, Download, Loader2, X, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 
 // Rotaciones predefinidas para el efecto de fotos apiladas manualmente
 const PHOTO_ROTATIONS = [2, -3, 1.5, -2.5, 3, -1.5, 2, -2, 1, -2.5, 3.5, -1];
@@ -18,11 +18,9 @@ const photoVariants = {
     x: -dir * 280, rotate: -dir * 13, opacity: 0, scale: 0.82,
   }),
 };
-import { User, SchoolEvent, ClassFolder, Photo, ArchiveStatus } from '../types';
+import { User, SchoolEvent, ClassFolder, Photo } from '../types';
 import { getEvents, createEvent, addPhotoToEvent, deletePhotoFromEvent } from '../services/dataService';
 import JSZip from 'jszip';
-
-const ARCHIVE_DAYS_THRESHOLD = 30;
 
 // Converts any string to a safe, readable filename slug
 const slugify = (s: string) =>
@@ -41,8 +39,6 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
   const [searchClassTerm, setSearchClassTerm] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
   const [isDownloadingEvent, setIsDownloadingEvent] = useState(false);
-  const [archiveStatus, setArchiveStatus] = useState<ArchiveStatus | null>(null);
-  const [showArchiveModal, setShowArchiveModal] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -89,82 +85,6 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
 
   const loadEvents = () => {
     setEvents(getEvents());
-  };
-
-  // ── Archive helpers ────────────────────────────────────────────────────────
-
-  /** Event has at least one photo stored locally on the server */
-  const hasLocalPhotos = (event: SchoolEvent): boolean => {
-    return event.folders.some(f => f.photos.some(p => p.url.startsWith('/uploads/')));
-  };
-
-  const hasArchivedPhotos = (event: SchoolEvent): boolean => {
-    return event.folders.some(f => f.photos.some(p => p.archived));
-  };
-
-  const countLocalPhotos = (event: SchoolEvent): number => {
-    let count = 0;
-    for (const f of event.folders) {
-      count += f.photos.filter(p => p.url.startsWith('/uploads/')).length;
-    }
-    return count;
-  };
-
-  const handleArchiveEvent = async (eventId?: string, force = false) => {
-    if (!confirm(eventId
-      ? '¿Archivar las fotos de este evento en Google Drive? Las fotos se moverán a la nube y se liberará espacio en el servidor.'
-      : '¿Archivar TODOS los eventos con fotos locales en Google Drive?'
-    )) return;
-
-    setShowArchiveModal(true);
-    try {
-      const body: Record<string, unknown> = {};
-      if (eventId) body.eventIds = [eventId];
-      if (force) body.force = true;
-      await fetch('/api/archive', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      // Start polling
-      pollArchiveStatus();
-    } catch (err) {
-      console.error('Error starting archive:', err);
-      setArchiveStatus({ status: 'error', total: 0, processed: 0, failed: 0, errors: [{ photoId: '', error: 'Error de conexión' }] });
-    }
-  };
-
-  const pollArchiveStatus = () => {
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch('/api/archive/status');
-        const data: ArchiveStatus = await res.json();
-        setArchiveStatus(data);
-        if (data.status === 'completed' || data.status === 'error') {
-          clearInterval(interval);
-          loadEvents();
-        }
-      } catch {
-        clearInterval(interval);
-      }
-    }, 1500);
-  };
-
-  /** Fetch a photo blob, handling archived (Drive) and local URLs */
-  const fetchPhotoBlob = async (photo: Photo): Promise<ArrayBuffer> => {
-    if (photo.archived && photo.driveFileId) {
-      const res = await fetch(`/api/drive-proxy?fileId=${encodeURIComponent(photo.driveFileId)}`);
-      return res.arrayBuffer();
-    } else if (photo.url.startsWith('data:')) {
-      const base64Data = photo.url.split(',')[1];
-      const binary = atob(base64Data);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-      return bytes.buffer;
-    } else {
-      const res = await fetch(photo.url);
-      return res.arrayBuffer();
-    }
   };
 
   const handleCreateEvent = (e: React.FormEvent) => {
@@ -249,34 +169,15 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
 
   // --- Download Helpers ---
 
-  const downloadSinglePhoto = async (photo: Photo, index: number) => {
+  const downloadSinglePhoto = (photo: Photo, index: number) => {
+    const link = document.createElement('a');
+    link.href = photo.url;
     const eventSlug = slugify(currentEvent?.title || 'evento');
     const classSlug = slugify(currentFolder?.className || 'clase');
-    const filename = `${eventSlug}_${classSlug}_${String(index + 1).padStart(3, '0')}.jpg`;
-
-    if (photo.archived && photo.driveFileId) {
-      try {
-        const buffer = await fetchPhotoBlob(photo);
-        const blob = new Blob([buffer]);
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      } catch (err) {
-        console.error('Error downloading archived photo:', err);
-      }
-    } else {
-      const link = document.createElement('a');
-      link.href = photo.url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
+    link.download = `${eventSlug}_${classSlug}_${String(index + 1).padStart(3, '0')}.jpg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const downloadFolderAsZip = async () => {
@@ -291,8 +192,16 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
       if (imgFolder) {
         await Promise.all(currentFolder.photos.map(async (photo, index) => {
           try {
-            const buffer = await fetchPhotoBlob(photo);
-            imgFolder.file(`foto_${index + 1}.jpg`, buffer);
+            if (photo.url.startsWith('data:')) {
+              // Legacy base64 format
+              const base64Data = photo.url.split(',')[1];
+              if (base64Data) imgFolder.file(`foto_${index + 1}.jpg`, base64Data, { base64: true });
+            } else {
+              // Server URL — fetch and add as ArrayBuffer
+              const res = await fetch(photo.url);
+              const buffer = await res.arrayBuffer();
+              imgFolder.file(`foto_${index + 1}.jpg`, buffer);
+            }
           } catch (e) {
             console.error(`Error fetching photo ${index + 1}:`, e);
           }
@@ -331,9 +240,15 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
 
         await Promise.all(folder.photos.map(async (photo, index) => {
           try {
-            const buffer = await fetchPhotoBlob(photo);
-            const ext = photo.archived ? 'jpg' : (photo.url.split('.').pop() || 'jpg');
-            imgFolder.file(`foto_${index + 1}.${ext}`, buffer);
+            if (photo.url.startsWith('data:')) {
+              const base64Data = photo.url.split(',')[1];
+              if (base64Data) imgFolder.file(`foto_${index + 1}.jpg`, base64Data, { base64: true });
+            } else {
+              const res = await fetch(photo.url);
+              const buffer = await res.arrayBuffer();
+              const ext = photo.url.split('.').pop() || 'jpg';
+              imgFolder.file(`foto_${index + 1}.${ext}`, buffer);
+            }
           } catch (e) {
             console.error(`Error fetching photo ${index + 1} from ${folder.className}:`, e);
           }
@@ -360,7 +275,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
     if (!currentEvent || !currentFolder) return;
     if (!confirm('¿Eliminar esta foto? Esta acción no se puede deshacer.')) return;
 
-    // Delete file from server (only for local files; archived photos stay in Drive as backup)
+    // Delete file from server
     if (photo.url.startsWith('/uploads/')) {
       try {
         await fetch(`/api/file?path=${encodeURIComponent(photo.url)}`, { method: 'DELETE' });
@@ -455,11 +370,6 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
                         className="group relative aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-zinc-800 shadow-sm cursor-pointer"
                     >
                         <img src={photo.url} alt="Event" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                        {photo.archived && (
-                          <div className="absolute top-2 left-2 bg-blue-500/80 p-1 rounded-full z-10" title="Archivada en Google Drive">
-                            <Cloud size={12} className="text-white" />
-                          </div>
-                        )}
 
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-3">
                             <div className="flex justify-end gap-1.5">
@@ -655,27 +565,15 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
           </h2>
           <p className="text-gray-500 dark:text-gray-400 mt-1">Colección fotográfica de actividades del centro.</p>
         </div>
-        <div className="flex items-center gap-2">
-          {isAdmin && events.some(hasLocalPhotos) && (
-            <button
-              onClick={() => handleArchiveEvent(undefined, true)}
-              className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg shadow-lg transition-colors flex items-center gap-2"
-              title="Archivar todos los eventos con fotos locales en Google Drive"
-            >
-              <CloudUpload size={20} />
-              <span className="hidden md:inline">Archivar en Drive</span>
-            </button>
-          )}
-          {canManageEvents && (
-            <button
+        {canManageEvents && (
+            <button 
                 onClick={() => setIsNewEventModalOpen(true)}
                 className="bg-hispa-red text-white px-4 py-2 rounded-lg shadow-lg hover:bg-slate-700 transition-colors flex items-center gap-2"
             >
                 <Plus size={20} />
                 <span>Nuevo Evento</span>
             </button>
-          )}
-        </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -711,28 +609,10 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
                     
                     <div className="p-6">
                         <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2 group-hover:text-hispa-blue transition-colors">{event.title}</h3>
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm text-gray-500 flex items-center gap-2">
+                        <p className="text-sm text-gray-500 flex items-center gap-2">
                             <Folder size={14} />
                             {event.folders.length} clases
-                          </p>
-                          <div className="flex items-center gap-2">
-                            {hasArchivedPhotos(event) && (
-                              <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                <Cloud size={10} /> En Drive
-                              </span>
-                            )}
-                            {isAdmin && hasLocalPhotos(event) && (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleArchiveEvent(event.id, true); }}
-                                className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/50 px-2 py-0.5 rounded-full flex items-center gap-1 transition-colors"
-                                title={`Archivar ${countLocalPhotos(event)} fotos en Google Drive`}
-                              >
-                                <CloudUpload size={10} /> Archivar
-                              </button>
-                            )}
-                          </div>
-                        </div>
+                        </p>
                     </div>
                 </motion.div>
             ))
@@ -771,85 +651,6 @@ export const EventsView: React.FC<EventsViewProps> = ({ currentUser }) => {
                     </form>
                 </motion.div>
             </div>
-        )}
-      </AnimatePresence>
-
-      {/* Archive Progress Modal */}
-      <AnimatePresence>
-        {showArchiveModal && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm">
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-2xl shadow-2xl p-6"
-            >
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
-                  <CloudUpload size={24} className="text-amber-600 dark:text-amber-400" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-800 dark:text-white">Archivando en Google Drive</h3>
-              </div>
-
-              {archiveStatus && archiveStatus.status === 'in_progress' && (
-                <div>
-                  <p className="text-sm text-gray-500 mb-2">
-                    Evento actual: <span className="font-medium text-gray-700 dark:text-gray-300">{archiveStatus.currentEvent}</span>
-                  </p>
-                  <div className="w-full bg-gray-200 dark:bg-zinc-700 rounded-full h-3 mb-2 overflow-hidden">
-                    <div
-                      className="bg-amber-500 h-3 rounded-full transition-all duration-300"
-                      style={{ width: archiveStatus.total > 0 ? `${(archiveStatus.processed / archiveStatus.total) * 100}%` : '0%' }}
-                    />
-                  </div>
-                  <p className="text-xs text-gray-400 text-center">{archiveStatus.processed} / {archiveStatus.total} fotos</p>
-                  {archiveStatus.failed > 0 && (
-                    <p className="text-xs text-red-400 mt-1">{archiveStatus.failed} errores</p>
-                  )}
-                </div>
-              )}
-
-              {archiveStatus && archiveStatus.status === 'completed' && (
-                <div>
-                  <div className="flex items-center gap-2 text-green-600 dark:text-green-400 mb-2">
-                    <Cloud size={18} />
-                    <span className="font-medium">Archivado completado</span>
-                  </div>
-                  <p className="text-sm text-gray-500">
-                    {archiveStatus.processed - archiveStatus.failed} fotos archivadas correctamente.
-                    {archiveStatus.failed > 0 && ` ${archiveStatus.failed} errores.`}
-                  </p>
-                </div>
-              )}
-
-              {archiveStatus && archiveStatus.status === 'error' && (
-                <div>
-                  <p className="text-sm text-red-500 mb-2">Error durante el archivado.</p>
-                  {archiveStatus.errors.length > 0 && (
-                    <p className="text-xs text-gray-400">{archiveStatus.errors[0].error}</p>
-                  )}
-                </div>
-              )}
-
-              {(!archiveStatus || archiveStatus.status === 'idle') && (
-                <div className="flex items-center gap-2 text-gray-500">
-                  <Loader2 size={18} className="animate-spin" />
-                  <span className="text-sm">Iniciando archivado...</span>
-                </div>
-              )}
-
-              {archiveStatus && (archiveStatus.status === 'completed' || archiveStatus.status === 'error') && (
-                <div className="flex justify-end mt-4">
-                  <button
-                    onClick={() => { setShowArchiveModal(false); setArchiveStatus(null); }}
-                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-lg text-sm font-medium transition-colors"
-                  >
-                    Cerrar
-                  </button>
-                </div>
-              )}
-            </motion.div>
-          </div>
         )}
       </AnimatePresence>
     </div>

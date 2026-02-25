@@ -48,14 +48,6 @@ export default defineConfig(({ mode }) => {
             target: 'http://127.0.0.1:3011',
             changeOrigin: false,
           },
-          '/api/archive': {
-            target: 'http://127.0.0.1:3011',
-            changeOrigin: false,
-          },
-          '/api/drive-proxy': {
-            target: 'http://127.0.0.1:3011',
-            changeOrigin: false,
-          },
           '/uploads': {
             target: 'http://127.0.0.1:3011',
             changeOrigin: false,

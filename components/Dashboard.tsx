@@ -14,13 +14,13 @@ interface DashboardProps {
 
 // ── Default fallback images ──────────────────────────────────────────────────
 const DEFAULT_IMAGES: Record<string, string> = {
-  hero:           'https://picsum.photos/id/1031/1600/600',
-  'card-aulas':   'https://picsum.photos/id/201/500/300',
+  hero: 'https://picsum.photos/id/1031/1600/600',
+  'card-aulas': 'https://picsum.photos/id/201/500/300',
   'card-formacion': 'https://picsum.photos/id/3/500/300',
-  'card-recursos':  'https://picsum.photos/id/366/500/300',
-  'card-ia':      'https://picsum.photos/id/60/500/300',
+  'card-recursos': 'https://picsum.photos/id/366/500/300',
+  'card-ia': 'https://picsum.photos/id/60/500/300',
   'card-claustro': 'https://picsum.photos/id/453/500/300',
-  'card-fotos':   'https://picsum.photos/id/450/500/300',
+  'card-fotos': 'https://picsum.photos/id/450/500/300',
 };
 
 // ── Canvas-based resize / crop ───────────────────────────────────────────────
@@ -35,11 +35,11 @@ const processImage = (
     const url = URL.createObjectURL(file);
     img.onload = () => {
       const canvas = document.createElement('canvas');
-      canvas.width  = targetW;
+      canvas.width = targetW;
       canvas.height = targetH;
       const ctx = canvas.getContext('2d')!;
 
-      const imgRatio    = img.width / img.height;
+      const imgRatio = img.width / img.height;
       const targetRatio = targetW / targetH;
 
       if (mode === 'contain') {
@@ -124,16 +124,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
   const isAdmin = currentUser?.role === 'admin';
 
   const [dynamicSections, setDynamicSections] = useState<NavItem[]>([]);
-  const [randomPhotos, setRandomPhotos]       = useState<Photo[]>([]);
+  const [randomPhotos, setRandomPhotos] = useState<Photo[]>([]);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [images, setImages] = useState<Record<string, string>>(DEFAULT_IMAGES);
 
   // Modal state
-  const [editingKey, setEditingKey]     = useState<{ key: string; w: number; h: number } | null>(null);
+  const [editingKey, setEditingKey] = useState<{ key: string; w: number; h: number } | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl]     = useState<string | null>(null);
-  const [previewBlob, setPreviewBlob]   = useState<Blob | null>(null);
-  const [cropMode, setCropMode]         = useState<'cover' | 'contain'>('cover');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
+  const [cropMode, setCropMode] = useState<'cover' | 'contain'>('cover');
   const [isProcessing, setIsProcessing] = useState(false);
 
   // ── Load data ──────────────────────────────────────────────────────────────
@@ -477,21 +477,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
               <div className="flex gap-2 mb-4">
                 <button
                   onClick={() => handleModeChange('cover')}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
-                    cropMode === 'cover'
-                      ? 'bg-hispa-red text-white'
-                      : 'bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-zinc-700'
-                  }`}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${cropMode === 'cover'
+                    ? 'bg-hispa-red text-white'
+                    : 'bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-zinc-700'
+                    }`}
                 >
                   Recortar para rellenar
                 </button>
                 <button
                   onClick={() => handleModeChange('contain')}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
-                    cropMode === 'contain'
-                      ? 'bg-hispa-red text-white'
-                      : 'bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-zinc-700'
-                  }`}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${cropMode === 'contain'
+                    ? 'bg-hispa-red text-white'
+                    : 'bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-zinc-700'
+                    }`}
                 >
                   Ajustar sin recortar
                 </button>
