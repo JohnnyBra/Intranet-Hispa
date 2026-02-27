@@ -6,6 +6,18 @@ Portal interno exclusivo para el profesorado del Colegio La Hispanidad. Centrali
 
 ---
 
+## 📸 Capturas de Pantalla
+
+| Login | Dashboard — Inicio |
+|:---:|:---:|
+| ![Login](docs/screenshots/01-login.png) | ![Dashboard](docs/screenshots/02-dashboard-inicio.png) |
+
+| Repositorio de Recursos | Galería de Fotos y Eventos |
+|:---:|:---:|
+| ![Recursos](docs/screenshots/03-repositorio-recursos.png) | ![Galería](docs/screenshots/04-galeria-eventos-fotos.png) |
+
+---
+
 ## 🚀 Funcionalidades por Público
 
 ### 👨‍🏫 Profesorado
