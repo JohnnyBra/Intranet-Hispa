@@ -1,6 +1,88 @@
 # Intranet Colegio La Hispanidad
 
-Intranet privada para el profesorado del Colegio La Hispanidad. Acceso restringido a cuentas `@colegiolahispanidad.es` validadas contra el directorio de Prisma.
+Portal interno exclusivo para el profesorado del Colegio La Hispanidad. Centraliza el repositorio de recursos didácticos, la galería de fotos de eventos y los accesos rápidos al resto de apps de la Suite Educativa. Acceso restringido a cuentas `@colegiolahispanidad.es` validadas contra PrismaEdu.
+
+> **Acceso:** Exclusivo para profesorado y administración. Autenticación por Google OAuth o PIN de dirección (SSO compartido con PrismaEdu).
+
+---
+
+## 🚀 Funcionalidades por Público
+
+### 👨‍🏫 Profesorado
+
+- **Dashboard**
+  - Accesos rápidos a todas las apps del ecosistema (Aulas, BiblioHispa, Excursiones…)
+  - Tarjetas de acceso a secciones: Formación, Recursos, IA, Claustro, Fotos
+  - Navegación por el portal mediante barra lateral jerárquica
+
+- **Repositorio de recursos**
+  - Explorar recursos clasificados por etapa y área:
+    - Infantil · Primaria · Secundaria · Formación · Recursos Compartidos · secciones personalizadas
+  - Búsqueda con filtros combinables:
+    - Texto libre (título / descripción)
+    - Asignatura (Matemáticas, Lengua, Inglés, Ciencias…)
+    - Curso (1º ESO, 2º Primaria…) — lógica de intersección
+    - Tipo de recurso (PDF, documento, enlace externo, vídeo, imagen)
+  - Ver, abrir y descargar cualquier recurso
+  - **Subir recursos propios** en las secciones permitidas (PDF, docs, vídeos, imágenes, enlaces)
+  - Editar y eliminar los recursos propios subidos
+
+- **Galería de fotos y eventos escolares**
+  - Explorar eventos del centro organizados por nombre y fecha (Navidad, Carnaval, Fin de Curso…)
+  - Álbumes organizados por evento y por clase
+  - Visor de fotos a pantalla completa (lightbox) con navegación y descarga individual
+  - **Subir fotos** a la carpeta de la propia clase en cada evento
+  - Eliminar fotos propias
+
+- **Barra lateral**
+  - Menú jerárquico con secciones y subsecciones colapsables
+  - Información del usuario en sesión con indicador de rol
+  - Cierre de sesión
+  - Cambio de tema: Claro / Automático / Oscuro
+
+---
+
+### 🏫 Dirección / Administración
+
+Todo lo del profesorado, más:
+
+- **Repositorio de recursos (gestión completa)**
+  - Subir, editar y eliminar recursos en **cualquier sección**
+  - Crear nuevas secciones personalizadas (categorías)
+  - Editar el título y descripción de cualquier sección
+
+- **Galería de fotos (gestión completa)**
+  - Crear, renombrar y eliminar eventos escolares
+  - Crear, renombrar y eliminar carpetas de clase dentro de un evento
+  - Subir, ver y eliminar fotos en cualquier carpeta del sistema
+  - Numeración automática de fotos en secuencia por carpeta
+
+- **Personalización del dashboard**
+  - Subir y reemplazar la imagen de cabecera principal (hero banner)
+  - Editar las imágenes de las tarjetas de acceso rápido
+
+- **Claustro**
+  - Acceso al directorio completo del personal docente del centro
+
+---
+
+## ⚙️ Características Técnicas
+
+- **Frontend:** React 19 + TypeScript + Vite 6, Framer Motion, Tailwind CSS (CDN)
+- **Servidor proxy:** `proxy-server.js` (puerto 3011) — gestión de ficheros, proxy a PrismaEdu, servicio de `/uploads/`
+- **Autenticación:** Google Identity Services (GIS) + PIN de dirección (proxy a PrismaEdu) + SSO (`BIBLIO_SSO_TOKEN`)
+- **Almacenamiento de metadatos:** `localStorage` (sesión, secciones, imágenes del dashboard)
+- **Almacenamiento de ficheros:** Directorio `uploads/` en el servidor (persiste entre actualizaciones)
+- **Organización de uploads:**
+  ```
+  uploads/
+    resources/{categoria}/{tituloSlug}_{timestamp}.ext
+    events/{eventoSlug}/{claseSlug}/{eventoSlug}_{claseSlug}_{001}.ext
+    dashboard/hero.jpg · card-aulas.jpg · card-formacion.jpg…
+  ```
+- **Despliegue:** PM2 + Nginx en Ubuntu/Debian (Vite preview en :3010, proxy-server en :3011)
+
+---
 
 **Stack:** React 19 + TypeScript + Vite 6 · Auth: Google Identity Services · Datos: localStorage
 
