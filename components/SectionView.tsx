@@ -358,79 +358,10 @@ export const SectionView: React.FC<SectionViewProps> = ({ sectionId, currentUser
                 </div>
             )}
 
-            {/* Asistentes IA Destacados (Gemini Gems) - Only shown in IA */}
-            {sectionId === 'ia-educacion' && (
-                <div className="space-y-6 mb-8">
-                    <h3 className="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                        <Sparkles className="text-indigo-500" />
-                        Asistente IA Destacado
-                    </h3>
-                    <div className="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-3xl p-1 shadow-xl shadow-purple-500/20 mb-8 inline-block w-full">
-                        <div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl rounded-[1.4rem] p-6 lg:p-8 flex flex-col lg:flex-row items-center gap-8 relative overflow-hidden group w-full">
-                            {/* Decorative background elements */}
-                            <div className="absolute top-0 right-0 p-32 bg-purple-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-purple-500/20 transition-all duration-700"></div>
-                            <div className="absolute bottom-0 left-0 p-32 bg-blue-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 group-hover:bg-blue-500/20 transition-all duration-700"></div>
-
-                            <div className="flex-1 space-y-4 relative z-10 w-full text-left">
-                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-sm font-semibold mb-2">
-                                    <span className="relative flex h-2 w-2">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-                                    </span>
-                                    Nuevo Gem
-                                </div>
-                                <h4 className="text-3xl lg:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-pink-600 dark:from-indigo-400 dark:to-pink-400">
-                                    Asistente de IA educativa en Primaria
-                                </h4>
-                                <p className="text-gray-600 dark:text-gray-300 text-lg leading-relaxed max-w-2xl">
-                                    Descubre nuestro asistente especializado de Gemini personalizado. Genera Situaciones de Aprendizaje secuenciadas minuto a minuto, cuadernos de recursos para el alumnado, guías de evaluación detalladas, presentaciones interactivas para las pizarras... Y todo ello contextualizado en nuestro barrio y en nuestro colegio de La Hispanidad.
-                                </p>
-                                <div className="pt-4 flex flex-wrap gap-4">
-                                    <a
-                                        href="https://gemini.google.com/gem/1X1NMRsX5fvSDa3EaeuLTzJyE6ELFCj0m?usp=sharing"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-8 py-4 rounded-xl font-bold shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:scale-105 transition-all duration-300"
-                                    >
-                                        <Sparkles size={20} className="text-purple-200" />
-                                        <span>Probar Gemini Gem</span>
-                                    </a>
-                                </div>
-                            </div>
-
-                            {/* Right side visual representation */}
-                            <div className="w-full lg:w-1/3 relative z-10 flex justify-center mt-6 lg:mt-0">
-                                <div className="relative w-48 h-48 lg:w-64 lg:h-64 rounded-2xl bg-gradient-to-br from-indigo-50 to-pink-50 dark:from-indigo-900/20 dark:to-pink-900/20 flex items-center justify-center p-8 border border-indigo-100 dark:border-indigo-800/50 shadow-inner group-hover:scale-105 transition-transform duration-500">
-                                    <motion.div
-                                        animate={{ rotate: 360 }}
-                                        transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-                                        className="absolute inset-0 border-2 border-dashed border-indigo-300/50 dark:border-indigo-500/30 rounded-full m-4"
-                                    />
-                                    <div className="relative w-24 h-24 lg:w-32 lg:h-32 text-indigo-500 dark:text-indigo-400 drop-shadow-xl saturate-150 group-hover:drop-shadow-2xl transition-all duration-300">
-                                        <svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" fill="url(#paint0_linear)" />
-                                            <path d="M12 5L13.5 10.5L19 12L13.5 13.5L12 19L10.5 13.5L5 12L10.5 10.5L12 5Z" fill="white" className="animate-pulse duration-1000" />
-                                            <path d="M18.5 4L19 6L21 6.5L19 7L18.5 9L18 7L16 6.5L18 6L18.5 4Z" fill="white" className="animate-pulse delay-700" />
-                                            <path d="M5.5 17L6 19L8 19.5L6 20L5.5 22L5 20L3 19.5L5 19L5.5 17Z" fill="white" className="animate-pulse delay-300" />
-                                            <defs>
-                                                <linearGradient id="paint0_linear" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
-                                                    <stop stopColor="#6366F1" />
-                                                    <stop offset="1" stopColor="#EC4899" />
-                                                </linearGradient>
-                                            </defs>
-                                        </svg>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
             {/* Advanced Search & Filter Bar */}
             <div
                 ref={searchContainerRef}
-                className={`relative bg-white dark:bg-zinc-900 rounded-xl shadow-sm border transition-all z-20 ${isGlobalSearch ? 'border-blue-300 dark:border-blue-700 ring-1 ring-blue-100 dark:ring-blue-900' : 'border-gray-100 dark:border-zinc-800'}`}
+                className={`relative bg-white dark:bg-zinc-900 rounded-xl shadow-sm border transition-all z-20 mb-8 ${isGlobalSearch ? 'border-blue-300 dark:border-blue-700 ring-1 ring-blue-100 dark:ring-blue-900' : 'border-gray-100 dark:border-zinc-800'}`}
             >
                 <div className="p-2 md:p-3 flex items-center gap-2 flex-wrap min-h-[56px]">
                     {isGlobalSearch ? <Globe className="text-hispa-blue ml-2 animate-pulse" /> : <Search className="text-gray-400 ml-2" />}
@@ -578,6 +509,75 @@ export const SectionView: React.FC<SectionViewProps> = ({ sectionId, currentUser
                     )}
                 </AnimatePresence>
             </div>
+
+            {/* Asistentes IA Destacados (Gemini Gems) - Only shown in IA */}
+            {sectionId === 'ia-educacion' && (
+                <div className="space-y-6 mb-8">
+                    <h3 className="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                        <Sparkles className="text-indigo-500" />
+                        Asistente IA Destacado
+                    </h3>
+                    <div className="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-3xl p-1 shadow-xl shadow-purple-500/20 mb-8 inline-block w-full">
+                        <div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl rounded-[1.4rem] p-6 lg:p-8 flex flex-col lg:flex-row items-center gap-8 relative overflow-hidden group w-full">
+                            {/* Decorative background elements */}
+                            <div className="absolute top-0 right-0 p-32 bg-purple-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-purple-500/20 transition-all duration-700"></div>
+                            <div className="absolute bottom-0 left-0 p-32 bg-blue-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 group-hover:bg-blue-500/20 transition-all duration-700"></div>
+
+                            <div className="flex-1 space-y-4 relative z-10 w-full text-left">
+                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-sm font-semibold mb-2">
+                                    <span className="relative flex h-2 w-2">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                                    </span>
+                                    Nuevo Gem
+                                </div>
+                                <h4 className="text-3xl lg:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-pink-600 dark:from-indigo-400 dark:to-pink-400">
+                                    Asistente de IA educativa en Primaria
+                                </h4>
+                                <p className="text-gray-600 dark:text-gray-300 text-lg leading-relaxed max-w-2xl">
+                                    Descubre nuestro asistente especializado de Gemini personalizado. Genera Situaciones de Aprendizaje secuenciadas minuto a minuto, cuadernos de recursos para el alumnado, guías de evaluación detalladas, presentaciones interactivas para las pizarras... Y todo ello contextualizado en nuestro barrio y en nuestro colegio de La Hispanidad.
+                                </p>
+                                <div className="pt-4 flex flex-wrap gap-4">
+                                    <a
+                                        href="https://gemini.google.com/gem/1X1NMRsX5fvSDa3EaeuLTzJyE6ELFCj0m?usp=sharing"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-8 py-4 rounded-xl font-bold shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:scale-105 transition-all duration-300"
+                                    >
+                                        <Sparkles size={20} className="text-purple-200" />
+                                        <span>Probar Gemini Gem</span>
+                                    </a>
+                                </div>
+                            </div>
+
+                            {/* Right side visual representation */}
+                            <div className="w-full lg:w-1/3 relative z-10 flex justify-center mt-6 lg:mt-0">
+                                <div className="relative w-48 h-48 lg:w-64 lg:h-64 rounded-2xl bg-gradient-to-br from-indigo-50 to-pink-50 dark:from-indigo-900/20 dark:to-pink-900/20 flex items-center justify-center p-8 border border-indigo-100 dark:border-indigo-800/50 shadow-inner group-hover:scale-105 transition-transform duration-500">
+                                    <motion.div
+                                        animate={{ rotate: 360 }}
+                                        transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+                                        className="absolute inset-0 border-2 border-dashed border-indigo-300/50 dark:border-indigo-500/30 rounded-full m-4"
+                                    />
+                                    <div className="relative w-24 h-24 lg:w-32 lg:h-32 text-indigo-500 dark:text-indigo-400 drop-shadow-xl saturate-150 group-hover:drop-shadow-2xl transition-all duration-300">
+                                        <svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" fill="url(#paint0_linear)" />
+                                            <path d="M12 5L13.5 10.5L19 12L13.5 13.5L12 19L10.5 13.5L5 12L10.5 10.5L12 5Z" fill="white" className="animate-pulse duration-1000" />
+                                            <path d="M18.5 4L19 6L21 6.5L19 7L18.5 9L18 7L16 6.5L18 6L18.5 4Z" fill="white" className="animate-pulse delay-700" />
+                                            <path d="M5.5 17L6 19L8 19.5L6 20L5.5 22L5 20L3 19.5L5 19L5.5 17Z" fill="white" className="animate-pulse delay-300" />
+                                            <defs>
+                                                <linearGradient id="paint0_linear" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                                                    <stop stopColor="#6366F1" />
+                                                    <stop offset="1" stopColor="#EC4899" />
+                                                </linearGradient>
+                                            </defs>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Global Search Indicator */}
             {isGlobalSearch && (

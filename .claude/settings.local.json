@@ -11,7 +11,10 @@
       "Bash(./node_modules/.bin/tsc:*)",
       "Bash(npm run build:*)",
       "Bash(npx vite build)",
-      "Bash(node_modules/.bin/tsc:*)"
+      "Bash(node_modules/.bin/tsc:*)",
+      "mcp__plugin_claude-mem_mcp-search__save_memory",
+      "Bash(cd:*)",
+      "Bash(cd C:/cole/intranet/intranet && node test-drive.js 2>&1)"
     ]
   }
 }
