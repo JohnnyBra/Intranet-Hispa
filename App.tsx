@@ -69,14 +69,14 @@ const App: React.FC = () => {
           }
         }
 
-        if (res.status === 401 && !localUser) {
-          localStorage.removeItem('hispanidad_user');
-        }
+        // El servidor respondió (401 u otro): sesión inválida → forzar login
+        localStorage.removeItem('hispanidad_user');
+        return;
       } catch (e) {
-        // Fallback a local
+        // Error de red: usar datos locales como fallback temporal
+        if (localUser) setUser(localUser);
+        return;
       }
-
-      if (localUser) setUser(localUser);
     };
     checkAuth();
   }, []);
