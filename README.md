@@ -16,6 +16,10 @@ Portal interno exclusivo para el profesorado del Colegio La Hispanidad. Centrali
 |:---:|:---:|
 | ![Recursos](docs/screenshots/03-repositorio-recursos.png) | ![Galería](docs/screenshots/04-galeria-eventos-fotos.png) |
 
+| IA en Educación | |
+|:---:|:---:|
+| ![IA](docs/screenshots/05-ia-educacion.png) | |
+
 ---
 
 ## 🚀 Funcionalidades por Público

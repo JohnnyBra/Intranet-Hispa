@@ -10,11 +10,25 @@ import { User, NavItem, ThemeMode } from './types';
 import { logout, checkSession } from './services/authService';
 import { getNavItems, addNavItem, loadAllData } from './services/dataService';
 
+const getSharedTheme = (): ThemeMode | null => {
+  const m = document.cookie.match(/(?:^|;\s*)HISPA_THEME=([^;]+)/);
+  const v = m?.[1];
+  return (v === 'light' || v === 'dark' || v === 'system') ? v as ThemeMode : null;
+};
+
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [currentView, setCurrentView] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Default closed
-  const [theme, setTheme] = useState<ThemeMode>('system');
+  const [theme, setTheme] = useState<ThemeMode>(() => {
+    if (!localStorage.getItem('intranet_theme_manual')) {
+      const cookieTheme = getSharedTheme();
+      if (cookieTheme) return cookieTheme;
+    }
+    const saved = localStorage.getItem('intranet_theme');
+    if (saved === 'light' || saved === 'dark' || saved === 'system') return saved as ThemeMode;
+    return 'system';
+  });
   const [navItems, setNavItems] = useState<NavItem[]>([]);
   const [isNewSectionModalOpen, setIsNewSectionModalOpen] = useState(false);
   const [newSectionName, setNewSectionName] = useState('');
@@ -47,6 +61,28 @@ const App: React.FC = () => {
     }
   }, [theme]);
 
+  // Re-sync from PrismaEdu cookie when tab regains focus (if no manual override)
+  useEffect(() => {
+    const syncFromCookie = () => {
+      if (localStorage.getItem('intranet_theme_manual')) return;
+      const cookieTheme = getSharedTheme();
+      if (cookieTheme) setTheme(cookieTheme);
+    };
+    const onVisibility = () => { if (document.visibilityState === 'visible') syncFromCookie(); };
+    window.addEventListener('focus', syncFromCookie);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('focus', syncFromCookie);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, []);
+
+  const handleSetTheme = (t: ThemeMode) => {
+    localStorage.setItem('intranet_theme_manual', '1');
+    localStorage.setItem('intranet_theme', t);
+    setTheme(t);
+  };
+
   // Session check
   useEffect(() => {
     const checkAuth = async () => {
@@ -58,6 +94,7 @@ const App: React.FC = () => {
         if (res.ok) {
           const data = await res.json();
           if (data.success && data.user) {
+            localStorage.removeItem('intranet_theme_manual');
             const ssoUser: User = {
               email: data.user.email,
               name: data.user.name,
@@ -82,6 +119,7 @@ const App: React.FC = () => {
   }, []);
 
   const handleLogin = (user: User) => {
+    localStorage.removeItem('intranet_theme_manual');
     setUser(user);
     localStorage.setItem('hispanidad_user', JSON.stringify(user));
   };
@@ -181,21 +219,21 @@ const App: React.FC = () => {
             {/* Theme Toggle */}
             <div className="flex bg-gray-200 dark:bg-zinc-800 rounded-lg p-0.5">
               <button
-                onClick={() => setTheme('light')}
+                onClick={() => handleSetTheme('light')}
                 className={`flex justify-center p-1.5 rounded-md text-sm transition-colors ${theme === 'light' ? 'bg-white text-hispa-red shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
                 title="Modo claro"
               >
                 <Sun size={14} />
               </button>
               <button
-                onClick={() => setTheme('system')}
+                onClick={() => handleSetTheme('system')}
                 className={`flex justify-center p-1.5 rounded-md text-sm transition-colors ${theme === 'system' ? 'bg-white dark:bg-zinc-700 text-hispa-red shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
                 title="Automático"
               >
                 <Monitor size={14} />
               </button>
               <button
-                onClick={() => setTheme('dark')}
+                onClick={() => handleSetTheme('dark')}
                 className={`flex justify-center p-1.5 rounded-md text-sm transition-colors ${theme === 'dark' ? 'bg-zinc-700 text-hispa-red shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
                 title="Modo oscuro"
               >
