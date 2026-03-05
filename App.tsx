@@ -202,7 +202,20 @@ const App: React.FC = () => {
       >
         {/* Universal Header (Mobile & Desktop) */}
         <div className="header-glass sticky top-0 z-30 flex items-center justify-between p-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            {/* Prisma Link (izquierda del todo) */}
+            <a
+              href="https://prisma.bibliohispa.es"
+              className="flex items-center px-1.5 py-1.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-colors"
+              title="Ir al Portal Prisma"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect width="7" height="7" x="3" y="3" rx="1" />
+                <rect width="7" height="7" x="14" y="3" rx="1" fill="#3b82f6" stroke="#3b82f6" />
+                <rect width="7" height="7" x="14" y="14" rx="1" />
+                <rect width="7" height="7" x="3" y="14" rx="1" />
+              </svg>
+            </a>
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
@@ -214,9 +227,8 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          {/* Header Actions: Theme toggle + Prisma link */}
+          {/* Header Actions: Theme toggle */}
           <div className="flex items-center gap-2">
-            {/* Theme Toggle */}
             <div className="flex bg-gray-200 dark:bg-zinc-800 rounded-lg p-0.5">
               <button
                 onClick={() => handleSetTheme('light')}
@@ -240,21 +252,6 @@ const App: React.FC = () => {
                 <Moon size={14} />
               </button>
             </div>
-
-            {/* Prisma Link */}
-            <a
-              href="https://prisma.bibliohispa.es"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-colors font-medium"
-              title="Ir al Portal Prisma"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect width="7" height="7" x="3" y="3" rx="1" />
-                <rect width="7" height="7" x="14" y="3" rx="1" fill="#3b82f6" stroke="#3b82f6" />
-                <rect width="7" height="7" x="14" y="14" rx="1" />
-                <rect width="7" height="7" x="3" y="14" rx="1" />
-              </svg>
-              <span className="hidden sm:inline">Prisma</span>
-            </a>
           </div>
         </div>
 
