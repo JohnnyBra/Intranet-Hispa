@@ -131,7 +131,8 @@ const App: React.FC = () => {
 
   const handleAddSection = () => {
     if (!newSectionName) return;
-    const id = newSectionName.toLowerCase().replace(/\s+/g, '-');
+    const id = newSectionName.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase();
+    if (!id) return;
     const newItem: NavItem = {
       id: id,
       label: newSectionName,

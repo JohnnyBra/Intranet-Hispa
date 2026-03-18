@@ -160,11 +160,28 @@ const getCookies = (req) => {
   const rc = req.headers.cookie;
   if (rc) {
     rc.split(';').forEach(cookie => {
-      const parts = cookie.split('=');
-      cookies[parts.shift().trim()] = decodeURI(parts.join('='));
+      const idx = cookie.indexOf('=');
+      if (idx === -1) return;
+      const key = cookie.slice(0, idx).trim();
+      const val = cookie.slice(idx + 1);
+      try { cookies[key] = decodeURIComponent(val); } catch (_) { cookies[key] = val; }
     });
   }
   return cookies;
+};
+
+// Simple in-memory rate limiter (no external deps needed)
+const _rateLimits = new Map();
+const checkRateLimit = (ip, maxReqs = 10, windowMs = 60_000) => {
+  const now = Date.now();
+  const entry = _rateLimits.get(ip);
+  if (!entry || now > entry.reset) {
+    _rateLimits.set(ip, { count: 1, reset: now + windowMs });
+    return false;
+  }
+  if (entry.count >= maxReqs) return true;
+  entry.count++;
+  return false;
 };
 
 const server = http.createServer(async (req, res) => {
@@ -227,7 +244,14 @@ const server = http.createServer(async (req, res) => {
     const chunks = [];
     req.on('data', chunk => chunks.push(chunk));
     req.on('end', () => {
-      fs.writeFile(filePath, Buffer.concat(chunks), err => {
+      const buf = Buffer.concat(chunks);
+      // Validate JSON before writing to prevent data corruption
+      try { JSON.parse(buf.toString('utf8')); } catch (_) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid JSON' }));
+        return;
+      }
+      fs.writeFile(filePath, buf, err => {
         if (err) {
           console.error(`[${new Date().toISOString()}] Data write error (${key}):`, err);
           res.writeHead(500);
@@ -325,6 +349,12 @@ const server = http.createServer(async (req, res) => {
 
     // ── Prisma auth proxy ─────────────────────────────────────────────────────
   } else if (req.method === 'POST' && req.url === '/api/prisma-auth') {
+    const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+    if (checkRateLimit(clientIp, 10, 60_000)) {
+      res.writeHead(429, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, message: 'Demasiados intentos. Espera un minuto.' }));
+      return;
+    }
     console.log(`[${new Date().toISOString()}] Request received: ${req.method} ${req.url}`);
 
     let body = '';

@@ -33,6 +33,7 @@ const processImage = (
   new Promise((resolve) => {
     const img = new window.Image();
     const url = URL.createObjectURL(file);
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(new Blob()); };
     img.onload = () => {
       const canvas = document.createElement('canvas');
       canvas.width = targetW;

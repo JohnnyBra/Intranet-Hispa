@@ -94,7 +94,13 @@ export const loginWithPin = async (pin: string): Promise<User> => {
 
 export const checkSession = (): User | null => {
   const stored = localStorage.getItem('hispanidad_user');
-  return stored ? JSON.parse(stored) : null;
+  if (!stored) return null;
+  try {
+    return JSON.parse(stored);
+  } catch (_) {
+    localStorage.removeItem('hispanidad_user');
+    return null;
+  }
 };
 
 export const logout = () => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 
 // Converts any string to a safe, readable filename slug
 const slugify = (s: string) =>
@@ -41,7 +41,7 @@ export const SectionView: React.FC<SectionViewProps> = ({ sectionId, currentUser
     const searchContainerRef = useRef<HTMLDivElement>(null);
 
     const isAdmin = currentUser.role === 'admin';
-    const categories = getAllCategories();
+    const categories = useMemo(() => getAllCategories(), []);
 
     // Define allowed categories for teachers
     const TEACHER_ALLOWED_SECTIONS = [
@@ -168,7 +168,7 @@ export const SectionView: React.FC<SectionViewProps> = ({ sectionId, currentUser
         }
 
         const resourceData: Resource = {
-            id: editingResource.id || Math.random().toString(36).substr(2, 9),
+            id: editingResource.id || Math.random().toString(36).substring(2, 11),
             title: editingResource.title || 'Sin título',
             description: editingResource.description || '',
             type: (editingResource.type as any) || 'pdf',

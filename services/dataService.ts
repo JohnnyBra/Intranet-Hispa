@@ -263,12 +263,12 @@ export const createEvent = (title: string) => {
   // Generate folders for all courses (Lines A and B)
   const folders: ClassFolder[] = [];
   AVAILABLE_COURSES.forEach(course => {
-    folders.push({ id: Math.random().toString(36).substr(2, 9), className: `${course} A`, photos: [] });
-    folders.push({ id: Math.random().toString(36).substr(2, 9), className: `${course} B`, photos: [] });
+    folders.push({ id: Math.random().toString(36).substring(2, 11), className: `${course} A`, photos: [] });
+    folders.push({ id: Math.random().toString(36).substring(2, 11), className: `${course} B`, photos: [] });
   });
 
   const newEvent: SchoolEvent = {
-    id: Math.random().toString(36).substr(2, 9),
+    id: Math.random().toString(36).substring(2, 11),
     title,
     date: new Date().toISOString().split('T')[0],
     folders
@@ -299,7 +299,7 @@ export const addPhotoToEvent = (eventId: string, folderId: string, photoUrl: str
   if (folderIdx === -1) return;
 
   const newPhoto = {
-    id: Math.random().toString(36).substr(2, 9),
+    id: Math.random().toString(36).substring(2, 11),
     url: photoUrl,
     uploadedBy: user,
     date: new Date().toISOString().split('T')[0]
