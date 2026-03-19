@@ -145,6 +145,10 @@ server {
         proxy_read_timeout 120s;
     }
 
+    location /api/file {
+        proxy_pass http://127.0.0.1:3011;
+    }
+
     location /api/data {
         proxy_pass http://127.0.0.1:3011;
         proxy_read_timeout 10s;
