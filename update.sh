@@ -51,7 +51,32 @@ info "Compilando..."
 npm run build
 log "Build completado"
 
-# ── 4. Reiniciar proceso PM2 ──────────────────────────────
+# ── 4. Parchear nginx si faltan rutas al proxy ─────────────
+NGINX_CONF="/etc/nginx/sites-available/intranet-hispa"
+NGINX_CHANGED=0
+
+if [ -f "$NGINX_CONF" ]; then
+  if ! grep -q "location /api/data" "$NGINX_CONF"; then
+    info "Añadiendo /api/data a nginx..."
+    sed -i '/location \/uploads\//i\    location /api/data {\n        proxy_pass http://127.0.0.1:3011;\n        proxy_read_timeout 10s;\n    }\n' "$NGINX_CONF"
+    NGINX_CHANGED=1
+  fi
+  if ! grep -q "location /api/file" "$NGINX_CONF"; then
+    info "Añadiendo /api/file a nginx..."
+    sed -i '/location \/api\/data/i\    location /api/file {\n        proxy_pass http://127.0.0.1:3011;\n    }\n' "$NGINX_CONF"
+    NGINX_CHANGED=1
+  fi
+  if [ "$NGINX_CHANGED" = "1" ]; then
+    nginx -t && systemctl reload nginx
+    log "Nginx actualizado y recargado"
+  else
+    log "Nginx ya tiene todas las rutas necesarias"
+  fi
+else
+  warn "No se encontró $NGINX_CONF — omitiendo parche de nginx"
+fi
+
+# ── 5. Reiniciar proceso PM2 ──────────────────────────────
 info "Reiniciando procesos PM2..."
 if pm2 describe "$APP_NAME" &>/dev/null; then
   pm2 reload ecosystem.config.cjs --update-env
