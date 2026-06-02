@@ -4,6 +4,7 @@ import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { SectionView } from './components/SectionView';
 import { EventsView } from './components/EventsView';
+import { AppsView } from './components/AppsView';
 import { Login } from './components/Login';
 import { Logo } from './components/Logo';
 import { User, NavItem, ThemeMode } from './types';
@@ -153,6 +154,10 @@ const App: React.FC = () => {
 
     if (currentView === 'fotos-eventos') {
       return <EventsView currentUser={user!} />;
+    }
+
+    if (currentView === 'aplicaciones') {
+      return <AppsView currentUser={user!} />;
     }
 
     // Dynamic routing lookup
