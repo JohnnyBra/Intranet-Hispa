@@ -52,9 +52,19 @@ export interface SectionInfo {
 export interface NavItem {
   id: string;
   label: string;
-  icon?: React.ReactNode; 
-  iconName?: string; 
-  path?: string; 
+  icon?: React.ReactNode;
+  iconName?: string;
+  path?: string;
   externalUrl?: string;
   children?: NavItem[];
+}
+
+export interface App {
+  id: string;
+  name: string;
+  description: string;
+  url: string;
+  imageUrl?: string;
+  accentColor?: string;
+  tags?: string[];
 }
