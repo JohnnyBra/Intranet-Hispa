@@ -102,6 +102,8 @@ const handleUpload = (req, res) => {
     subDir = path.join('events', sanitize(eventSlug), sanitize(classSlug));
   } else if (type === 'dashboard') {
     subDir = 'dashboard';
+  } else if (type === 'app') {
+    subDir = 'apps';
   } else {
     subDir = path.join('resources', sanitize(category));
   }
