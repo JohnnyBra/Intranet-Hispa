@@ -1,4 +1,4 @@
-import { Resource, NavItem, SectionInfo, SchoolEvent, ClassFolder } from '../types';
+import { Resource, NavItem, SectionInfo, SchoolEvent, ClassFolder, App } from '../types';
 
 export const AVAILABLE_COURSES = [
   '3 años Infantil', '4 años Infantil', '5 años Infantil',
@@ -124,6 +124,25 @@ const INITIAL_RESOURCES: Resource[] = [
   },
 ];
 
+const INITIAL_APPS: App[] = [
+  {
+    id: 'plik',
+    name: 'Plik',
+    description: 'Evaluaciones y coevaluaciones al estilo Plickers/Kahoot. Lanza preguntas en tiempo real y recoge respuestas del aula.',
+    url: 'https://plik.bibliohispa.es',
+    accentColor: '#234B6E',
+    tags: ['General'],
+  },
+  {
+    id: 'barcar',
+    name: 'Barcar',
+    description: 'Hundir la flota multijugador para practicar coordenadas cartesianas. Ideal para 6º Primaria y 1º ESO.',
+    url: 'https://barcar.bibliohispa.es',
+    accentColor: '#5D9BC9',
+    tags: ['6º Primaria', '1º ESO', 'Matemáticas'],
+  },
+];
+
 const INITIAL_NAV_ITEMS: NavItem[] = [
   { id: 'inicio', label: 'Inicio', iconName: 'Home', path: 'dashboard' },
   { id: 'aulas', label: 'Aulas', iconName: 'Layout', externalUrl: 'https://aulas.bibliohispa.es' },
@@ -159,6 +178,7 @@ const INITIAL_NAV_ITEMS: NavItem[] = [
   },
   { id: 'ia', label: 'IA en educación', iconName: 'Brain', path: 'ia-educacion' },
   { id: 'fotos', label: 'Fotos de Eventos', iconName: 'Image', path: 'fotos-eventos' },
+  { id: 'aplicaciones', label: 'Aplicaciones', iconName: 'AppWindow', path: 'aplicaciones' },
   // "Claustro Virtual" (previously Documentos Profesorado) moved to end
   { id: 'claustro', label: 'Claustro Virtual', iconName: 'FileText', path: 'documentos-profesorado' }
 ];
@@ -215,6 +235,7 @@ export const loadAllData = async (): Promise<void> => {
     'hispa_nav',
     'hispa_sections',
     'hispa_dashboard_images',
+    'hispa_apps',
   ];
   await Promise.all(keys.map(async key => {
     try {
@@ -227,6 +248,15 @@ export const loadAllData = async (): Promise<void> => {
       console.warn(`[dataService] Could not load ${key} from server, using defaults`);
     }
   }));
+
+  // Migration: ensure 'aplicaciones' nav item exists in already-saved nav data
+  const navItems = getFromStore<NavItem[]>('hispa_nav', INITIAL_NAV_ITEMS);
+  if (!navItems.some(item => item.id === 'aplicaciones')) {
+    saveToStore('hispa_nav', [
+      ...navItems,
+      { id: 'aplicaciones', label: 'Aplicaciones', iconName: 'AppWindow', path: 'aplicaciones' },
+    ]);
+  }
 };
 
 // --- API ---
@@ -359,7 +389,7 @@ export const saveDashboardImage = (key: string, dataUrl: string): void => {
 export const getAllCategories = (): {id: string, label: string}[] => {
   const items = getNavItems();
   const categories: {id: string, label: string}[] = [];
-  
+
   const traverse = (list: NavItem[]) => {
     list.forEach(item => {
       if (item.path) categories.push({ id: item.path, label: item.label });
@@ -368,4 +398,27 @@ export const getAllCategories = (): {id: string, label: string}[] => {
   };
   traverse(items);
   return categories;
+};
+
+// Apps
+export const getApps = (): App[] => getFromStore<App[]>('hispa_apps', INITIAL_APPS);
+
+export const addApp = (app: App): void => {
+  const current = getApps();
+  saveToStore('hispa_apps', [app, ...current]);
+};
+
+export const updateApp = (app: App): void => {
+  const current = getApps();
+  const index = current.findIndex(a => a.id === app.id);
+  if (index !== -1) {
+    const updated = [...current];
+    updated[index] = app;
+    saveToStore('hispa_apps', updated);
+  }
+};
+
+export const deleteApp = (id: string): void => {
+  const current = getApps();
+  saveToStore('hispa_apps', current.filter(a => a.id !== id));
 };
