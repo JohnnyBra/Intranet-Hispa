@@ -8,7 +8,7 @@ import { AppsView } from './components/AppsView';
 import { Login } from './components/Login';
 import { Logo } from './components/Logo';
 import { User, NavItem, ThemeMode } from './types';
-import { logout, checkSession } from './services/authService';
+import { logout, checkSession, ADMIN_EMAIL } from './services/authService';
 import { getNavItems, addNavItem, loadAllData } from './services/dataService';
 
 const getSharedTheme = (): ThemeMode | null => {
@@ -99,7 +99,7 @@ const App: React.FC = () => {
             const ssoUser: User = {
               email: data.user.email,
               name: data.user.name,
-              role: data.user.role === 'ADMIN' ? 'admin' : 'teacher'
+              role: (data.user.role === 'ADMIN' || data.user.email?.toLowerCase() === ADMIN_EMAIL) ? 'admin' : 'teacher'
             };
             setUser(ssoUser);
             localStorage.setItem('hispanidad_user', JSON.stringify(ssoUser));

@@ -1,7 +1,7 @@
 import { User } from '../types';
 
 const ALLOWED_DOMAIN = 'colegiolahispanidad.es';
-const ADMIN_EMAIL = 'direccion@colegiolahispanidad.es';
+export const ADMIN_EMAIL = 'direccion@colegiolahispanidad.es';
 
 export const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string;
 
