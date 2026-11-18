@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ExternalLink, BookOpen, Users, Brain, GraduationCap,
-  FileText, Image as ImageIcon, Pencil, X, Upload, Check,
+  GraduationCap, Pencil, X, Upload, Check,
 } from 'lucide-react';
 import { getNavItems, getEvents, getDashboardImages, saveDashboardImage } from '../services/dataService';
 import { NavItem, Photo, User } from '../types';
@@ -110,7 +109,7 @@ const QuickCard: React.FC<{
     )}
 
     <div className="absolute bottom-0 left-0 p-6 w-full">
-      <div className={`inline-flex items-center justify-center p-2 rounded-lg bg-white/10 backdrop-blur-md mb-3 text-${color}-400`}>
+      <div className="mb-2 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3 origin-bottom-left">
         {icon}
       </div>
       <h3 className="text-xl font-bold text-white group-hover:text-gray-100 transition-colors">
@@ -298,7 +297,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <QuickCard
             title="Reserva de Aulas"
-            icon={<ExternalLink className="text-white" />}
+            icon={<img src="https://prisma.bibliohispa.es/suite/iconos/aulas.webp" alt="" className="w-14 h-14 object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)]" />}
             color="blue"
             image={images['card-aulas']}
             onClick={() => window.open('https://aulas.bibliohispa.es', '_blank')}
@@ -306,7 +305,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
           />
           <QuickCard
             title="Formación"
-            icon={<BookOpen className="text-white" />}
+            icon={<img src="https://prisma.bibliohispa.es/suite/iconos/profesor.webp" alt="" className="w-14 h-14 object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)]" />}
             color="green"
             image={images['card-formacion']}
             onClick={() => onNavigate('formacion')}
@@ -314,7 +313,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
           />
           <QuickCard
             title="Recursos Didácticos"
-            icon={<Users className="text-white" />}
+            icon={<img src="https://prisma.bibliohispa.es/suite/iconos/recursos.webp" alt="" className="w-14 h-14 object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)]" />}
             color="yellow"
             image={images['card-recursos']}
             onClick={() => onNavigate('recursos-generales')}
@@ -322,7 +321,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
           />
           <QuickCard
             title="IA en Educación"
-            icon={<Brain className="text-white" />}
+            icon={<img src="https://prisma.bibliohispa.es/suite/iconos/ia.webp" alt="" className="w-14 h-14 object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)]" />}
             color="purple"
             image={images['card-ia']}
             onClick={() => onNavigate('ia-educacion')}
@@ -330,7 +329,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
           />
           <QuickCard
             title="Claustro Virtual"
-            icon={<FileText className="text-white" />}
+            icon={<img src="https://prisma.bibliohispa.es/suite/iconos/claustro.webp" alt="" className="w-14 h-14 object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)]" />}
             color="red"
             image={images['card-claustro']}
             onClick={() => onNavigate('documentos-profesorado')}
@@ -338,7 +337,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
           />
           <QuickCard
             title="Fotos de Eventos"
-            icon={<ImageIcon className="text-white" />}
+            icon={<img src="https://prisma.bibliohispa.es/suite/iconos/galeria.webp" alt="" className="w-14 h-14 object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)]" />}
             color="pink"
             image={images['card-fotos']}
             onClick={() => onNavigate('fotos-eventos')}
@@ -362,7 +361,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
                 onClick={() => onNavigate(section.path || '')}
                 className="bg-white dark:bg-zinc-800 p-6 rounded-xl shadow-md border border-gray-100 dark:border-zinc-700 cursor-pointer hover:border-hispa-blue transition-colors flex flex-col items-center text-center gap-3"
               >
-                <img src="https://prisma.bibliohispa.es/suite/iconos/intranet.webp" alt="" className="w-16 h-16 object-contain drop-shadow-lg" />
+                <img src="https://prisma.bibliohispa.es/suite/iconos/intranet.webp" alt="" className="w-16 h-16 object-contain" />
                 <h3 className="font-bold text-gray-800 dark:text-gray-100">{section.label}</h3>
               </motion.div>
             ))}
