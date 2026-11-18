@@ -6,7 +6,6 @@ import { SectionView } from './components/SectionView';
 import { EventsView } from './components/EventsView';
 import { AppsView } from './components/AppsView';
 import { Login } from './components/Login';
-import { Logo } from './components/Logo';
 import { User, NavItem, ThemeMode } from './types';
 import { logout, checkSession, ADMIN_EMAIL } from './services/authService';
 import { getNavItems, addNavItem, loadAllData } from './services/dataService';
@@ -49,6 +48,7 @@ const App: React.FC = () => {
     const applyTheme = (isDark: boolean) => {
       if (isDark) root.classList.add('dark');
       else root.classList.remove('dark');
+      root.setAttribute('data-theme', isDark ? 'dark' : 'light'); // lo lee el kit de la Suite
     };
 
     if (theme === 'system') {
@@ -206,60 +206,67 @@ const App: React.FC = () => {
       <div
         className={`flex-1 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'md:ml-72' : 'ml-0'}`}
       >
-        {/* Universal Header (Mobile & Desktop) */}
-        <div className="header-glass sticky top-0 z-30 flex items-center justify-between p-4">
-          <div className="flex items-center gap-2">
-            {/* Prisma Link (izquierda del todo) */}
-            <a
-              href="https://prisma.bibliohispa.es"
-              className="flex items-center px-1.5 py-1.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-colors"
-              title="Ir al Portal Prisma"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect width="7" height="7" x="3" y="3" rx="1" />
-                <rect width="7" height="7" x="14" y="3" rx="1" fill="#3b82f6" stroke="#3b82f6" />
-                <rect width="7" height="7" x="14" y="14" rx="1" />
-                <rect width="7" height="7" x="3" y="14" rx="1" />
-              </svg>
-            </a>
+        {/* Cabecera común de la Suite La Hispanidad (kit servido desde Prisma) */}
+        <header className="hs-header z-30">
+          <div className="flex items-center gap-2 min-w-0">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+              aria-label={isSidebarOpen ? 'Cerrar menú' : 'Abrir menú'}
+              aria-expanded={isSidebarOpen}
             >
               <Menu size={24} />
             </button>
-            <div className={`transition-opacity duration-300 ${isSidebarOpen ? 'opacity-0 md:opacity-0 hidden' : 'opacity-100'}`}>
-              <Logo />
-            </div>
+            <a
+              className="hs-marca"
+              href="/"
+              onClick={(e) => { e.preventDefault(); setCurrentView('dashboard'); }}
+            >
+              <img className="hs-escudo" src="https://prisma.bibliohispa.es/suite/escudo.png" alt="Colegio La Hispanidad" />
+              <span>
+                <span className="hs-marca-nombre">Intranet</span>
+                <span className="hs-firma">Creado por Javi Barrero</span>
+              </span>
+            </a>
           </div>
 
-          {/* Header Actions: Theme toggle */}
           <div className="flex items-center gap-2">
-            <div className="flex bg-gray-200 dark:bg-zinc-800 rounded-lg p-0.5">
+            <div className="flex bg-gray-200 dark:bg-zinc-800 rounded-lg p-0.5" role="group" aria-label="Tema">
               <button
                 onClick={() => handleSetTheme('light')}
-                className={`flex justify-center p-1.5 rounded-md text-sm transition-colors ${theme === 'light' ? 'bg-white text-hispa-red shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                className={`flex justify-center p-1.5 rounded-md text-sm transition-colors ${theme === 'light' ? 'bg-white text-[#0a4a8c] dark:text-sky-300 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
                 title="Modo claro"
+                aria-label="Modo claro"
+                aria-pressed={theme === 'light'}
               >
                 <Sun size={14} />
               </button>
               <button
                 onClick={() => handleSetTheme('system')}
-                className={`flex justify-center p-1.5 rounded-md text-sm transition-colors ${theme === 'system' ? 'bg-white dark:bg-zinc-700 text-hispa-red shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                className={`flex justify-center p-1.5 rounded-md text-sm transition-colors ${theme === 'system' ? 'bg-white dark:bg-zinc-700 text-[#0a4a8c] dark:text-sky-300 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
                 title="Automático"
+                aria-label="Automático"
+                aria-pressed={theme === 'system'}
               >
                 <Monitor size={14} />
               </button>
               <button
                 onClick={() => handleSetTheme('dark')}
-                className={`flex justify-center p-1.5 rounded-md text-sm transition-colors ${theme === 'dark' ? 'bg-zinc-700 text-hispa-red shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                className={`flex justify-center p-1.5 rounded-md text-sm transition-colors ${theme === 'dark' ? 'bg-white dark:bg-zinc-700 text-[#0a4a8c] dark:text-sky-300 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
                 title="Modo oscuro"
+                aria-label="Modo oscuro"
+                aria-pressed={theme === 'dark'}
               >
                 <Moon size={14} />
               </button>
             </div>
+            <a href="https://prisma.bibliohispa.es" className="hs-boton hs-boton--suave" title="Ir al Portal Prisma">
+              <span className="hs-prisma" style={{ '--t': '18px' } as React.CSSProperties} aria-hidden="true" />
+              <span className="hidden sm:inline">Prisma</span>
+              <span className="sr-only sm:hidden">Ir a Prisma</span>
+            </a>
           </div>
-        </div>
+        </header>
 
         <main className="p-0 min-h-[calc(100vh-64px)]">
           {renderContent()}
