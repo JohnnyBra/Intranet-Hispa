@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ExternalLink, Plus, Pencil, Trash2, AppWindow } from 'lucide-react';
+import { X, ExternalLink, Plus, Pencil, Trash2 } from 'lucide-react';
 import { App, User } from '../types';
 import { getApps, addApp, updateApp, deleteApp, AVAILABLE_COURSES, AVAILABLE_SUBJECTS } from '../services/dataService';
 
@@ -139,7 +139,7 @@ export const AppsView: React.FC<AppsViewProps> = ({ currentUser }) => {
 
       {apps.length === 0 && (
         <div className="text-center py-20 text-gray-400 dark:text-gray-600">
-          <AppWindow size={48} className="mx-auto mb-3 opacity-40" />
+          <img src="https://prisma.bibliohispa.es/suite/iconos/apps.webp" alt="" className="w-20 h-20 object-contain mx-auto mb-3 opacity-70" />
           <p>No hay aplicaciones disponibles todavía.</p>
         </div>
       )}
@@ -159,7 +159,7 @@ export const AppsView: React.FC<AppsViewProps> = ({ currentUser }) => {
             >
               {app.imageUrl
                 ? <img src={app.imageUrl} alt={app.name} className="w-full h-full object-cover" />
-                : <AppWindow size={48} className="text-white/50" />
+                : <img src="https://prisma.bibliohispa.es/suite/iconos/apps.webp" alt="" className="w-20 h-20 object-contain drop-shadow-lg" />
               }
               <a
                 href={app.url}

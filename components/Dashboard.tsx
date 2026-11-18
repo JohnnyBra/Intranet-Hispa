@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ExternalLink, BookOpen, Users, Brain, GraduationCap,
-  FileText, Image as ImageIcon, Folder, Pencil, X, Upload, Check,
+  FileText, Image as ImageIcon, Pencil, X, Upload, Check,
 } from 'lucide-react';
 import { getNavItems, getEvents, getDashboardImages, saveDashboardImage } from '../services/dataService';
 import { NavItem, Photo, User } from '../types';
@@ -351,7 +351,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
       {dynamicSections.length > 0 && (
         <div>
           <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-            <Folder className="text-hispa-blue" />
+            <img src="https://prisma.bibliohispa.es/suite/iconos/intranet.webp" alt="" className="w-9 h-9 object-contain" />
             Otras Secciones
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -362,9 +362,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
                 onClick={() => onNavigate(section.path || '')}
                 className="bg-white dark:bg-zinc-800 p-6 rounded-xl shadow-md border border-gray-100 dark:border-zinc-700 cursor-pointer hover:border-hispa-blue transition-colors flex flex-col items-center text-center gap-3"
               >
-                <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-hispa-blue dark:text-blue-300">
-                  <Folder size={24} />
-                </div>
+                <img src="https://prisma.bibliohispa.es/suite/iconos/intranet.webp" alt="" className="w-16 h-16 object-contain drop-shadow-lg" />
                 <h3 className="font-bold text-gray-800 dark:text-gray-100">{section.label}</h3>
               </motion.div>
             ))}
@@ -376,7 +374,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
       {randomPhotos.length > 0 && (
         <div>
           <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-            <ImageIcon className="text-orange-500" />
+            <img src="https://prisma.bibliohispa.es/suite/iconos/galeria.webp" alt="" className="w-9 h-9 object-contain" />
             Galería Reciente
           </h2>
           <div className="relative w-full h-[300px] md:h-[400px] rounded-2xl overflow-hidden shadow-xl bg-black">
@@ -465,7 +463,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
                 {previewUrl ? (
                   <img src={previewUrl} alt="Vista previa" className="w-full h-full object-cover" />
                 ) : (
-                  <ImageIcon size={36} className="text-gray-300 dark:text-zinc-600" />
+                  <img src="https://prisma.bibliohispa.es/suite/iconos/galeria.webp" alt="" className="w-16 h-16 object-contain opacity-70" />
                 )}
                 {isProcessing && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-xl">
