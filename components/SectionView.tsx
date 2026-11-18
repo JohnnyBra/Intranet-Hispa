@@ -4,10 +4,11 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 const slugify = (s: string) =>
     s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '').toLowerCase();
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Search, Filter, X, Pencil, Save, ChevronDown, Tag, Globe, Sparkles } from 'lucide-react';
+import { Plus, Search, Filter, X, Pencil, Save, ChevronDown, Tag, Globe, Sparkles, ImagePlus } from 'lucide-react';
+import { ImageEditModal, ImageEditTarget } from './ImageEditModal';
 import { Resource, User, SectionInfo } from '../types';
 import { ResourceCard } from './ResourceCard';
-import { getResources, addResource, deleteResource, updateResource, getSectionInfo, updateSectionInfo, getAllCategories, AVAILABLE_COURSES, AVAILABLE_SUBJECTS } from '../services/dataService';
+import { getResources, addResource, deleteResource, updateResource, getSectionInfo, updateSectionInfo, getAllCategories, AVAILABLE_COURSES, AVAILABLE_SUBJECTS, getDashboardImages, removeDashboardImage } from '../services/dataService';
 
 interface SectionViewProps {
     sectionId: string;
@@ -41,6 +42,12 @@ export const SectionView: React.FC<SectionViewProps> = ({ sectionId, currentUser
     const searchContainerRef = useRef<HTMLDivElement>(null);
 
     const isAdmin = currentUser.role === 'admin';
+
+    // Portada opcional de la sección (la pone el administrador)
+    const clavePortada = `portada-${sectionId}`;
+    const [portada, setPortada] = useState<string | undefined>(undefined);
+    const [editandoPortada, setEditandoPortada] = useState<ImageEditTarget | null>(null);
+    useEffect(() => { setPortada(getDashboardImages().cards[clavePortada]); }, [clavePortada]);
     const categories = useMemo(() => getAllCategories(), []);
 
     // Define allowed categories for teachers
@@ -248,6 +255,21 @@ export const SectionView: React.FC<SectionViewProps> = ({ sectionId, currentUser
 
     return (
         <div className="p-4 md:p-8 max-w-7xl mx-auto min-h-screen">
+            {portada && (
+                <div className="relative group mb-6 rounded-3xl overflow-hidden shadow-lg aspect-[4/1] min-h-[120px] bg-gray-100 dark:bg-zinc-800">
+                    <img src={portada} alt="" className="w-full h-full object-cover" />
+                    {isAdmin && (
+                        <button
+                            onClick={() => setEditandoPortada({ key: clavePortada, w: 1600, h: 400, label: `Portada de «${sectionInfo.title}»` })}
+                            className="absolute top-3 right-3 p-1.5 rounded-lg bg-black/50 hover:bg-black/70 text-white opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all backdrop-blur-sm"
+                            title="Cambiar portada"
+                            aria-label="Cambiar portada"
+                        >
+                            <Pencil size={14} />
+                        </button>
+                    )}
+                </div>
+            )}
             <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-8">
                 <div className="flex-1">
                     {isEditingHeader ? (
@@ -284,6 +306,14 @@ export const SectionView: React.FC<SectionViewProps> = ({ sectionId, currentUser
                                 )}
                             </motion.h2>
                             <p className="text-gray-500 dark:text-gray-400 mt-1">{sectionInfo.description}</p>
+                            {isAdmin && !portada && (
+                                <button
+                                    onClick={() => setEditandoPortada({ key: clavePortada, w: 1600, h: 400, label: `Portada de «${sectionInfo.title}»` })}
+                                    className="mt-2 text-xs font-medium text-hispa-blue hover:underline flex items-center gap-1.5"
+                                >
+                                    <ImagePlus size={14} /> Añadir portada
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>
@@ -769,6 +799,12 @@ export const SectionView: React.FC<SectionViewProps> = ({ sectionId, currentUser
                     </div>
                 )}
             </AnimatePresence>
+            <ImageEditModal
+                target={editandoPortada}
+                onClose={() => setEditandoPortada(null)}
+                onSaved={(_key, url) => setPortada(url)}
+                onRemove={() => { removeDashboardImage(clavePortada); setPortada(undefined); }}
+            />
         </div>
     );
 };

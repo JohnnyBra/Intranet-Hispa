@@ -139,7 +139,6 @@ export const AppsView: React.FC<AppsViewProps> = ({ currentUser }) => {
 
       {apps.length === 0 && (
         <div className="text-center py-20 text-gray-400 dark:text-gray-600">
-          <img src="https://prisma.bibliohispa.es/suite/iconos/apps.webp" alt="" className="w-20 h-20 object-contain mx-auto mb-3 opacity-70" />
           <p>No hay aplicaciones disponibles todavía.</p>
         </div>
       )}
@@ -159,7 +158,7 @@ export const AppsView: React.FC<AppsViewProps> = ({ currentUser }) => {
             >
               {app.imageUrl
                 ? <img src={app.imageUrl} alt={app.name} className="w-full h-full object-cover" />
-                : <img src="https://prisma.bibliohispa.es/suite/iconos/apps.webp" alt="" className="w-20 h-20 object-contain" />
+                : <span className="text-5xl font-black text-white/80 select-none" aria-hidden="true">{app.name.charAt(0)}</span>
               }
               <a
                 href={app.url}
