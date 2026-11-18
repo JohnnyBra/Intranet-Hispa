@@ -27,6 +27,7 @@ const VALID_DATA_KEYS = new Set([
   'hispa_nav',
   'hispa_sections',
   'hispa_dashboard_images',
+  'hispa_apps',
 ]);
 
 // ── File storage ─────────────────────────────────────────────────────────────

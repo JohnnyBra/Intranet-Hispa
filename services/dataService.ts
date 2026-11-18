@@ -207,13 +207,20 @@ const INITIAL_EVENTS: SchoolEvent[] = [];
 // In-memory cache populated by loadAllData() at app startup
 const store: Record<string, any> = {};
 
-// Fire-and-forget save to server
+// Save to server without blocking the UI, but warn the user if it fails:
+// the change is already visible on screen and would be lost on reload.
 const saveToServer = (key: string, data: any): void => {
+  const fail = (detail: unknown) => {
+    console.error(`[dataService] Error saving ${key}:`, detail);
+    alert('No se ha podido guardar el cambio en el servidor. Si recargas la página se perderá; inténtalo de nuevo más tarde.');
+  };
   fetch(`/api/data?key=${key}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-  }).catch(err => console.error(`[dataService] Error saving ${key}:`, err));
+  })
+    .then(res => { if (!res.ok) fail(`HTTP ${res.status}`); })
+    .catch(fail);
 };
 
 const getFromStore = <T>(key: string, defaults: T): T =>
