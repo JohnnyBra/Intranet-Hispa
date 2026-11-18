@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  GraduationCap, Pencil, X, Upload, Check,
-} from 'lucide-react';
-import { getNavItems, getEvents, getDashboardImages, saveDashboardImage } from '../services/dataService';
+import { GraduationCap, Pencil, ImagePlus } from 'lucide-react';
+import { getNavItems, getEvents, getDashboardImages, removeDashboardImage } from '../services/dataService';
+import { ImageEditModal, ImageEditTarget } from './ImageEditModal';
 import { NavItem, Photo, User } from '../types';
 
 interface DashboardProps {
@@ -20,69 +19,18 @@ const DEFAULT_IMAGES: Record<string, string> = {
   'card-ia': 'https://picsum.photos/id/60/500/300',
   'card-claustro': 'https://picsum.photos/id/453/500/300',
   'card-fotos': 'https://picsum.photos/id/450/500/300',
+  'card-aplicaciones': 'https://picsum.photos/id/0/500/300',
 };
-
-// ── Canvas-based resize / crop ───────────────────────────────────────────────
-const processImage = (
-  file: File,
-  targetW: number,
-  targetH: number,
-  mode: 'cover' | 'contain',
-): Promise<Blob> =>
-  new Promise((resolve) => {
-    const img = new window.Image();
-    const url = URL.createObjectURL(file);
-    img.onerror = () => { URL.revokeObjectURL(url); resolve(new Blob()); };
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = targetW;
-      canvas.height = targetH;
-      const ctx = canvas.getContext('2d')!;
-
-      const imgRatio = img.width / img.height;
-      const targetRatio = targetW / targetH;
-
-      if (mode === 'contain') {
-        // Fill background then draw full image centred (letterbox)
-        ctx.fillStyle = '#111827';
-        ctx.fillRect(0, 0, targetW, targetH);
-        let drawW: number, drawH: number;
-        if (imgRatio > targetRatio) {
-          drawW = targetW;
-          drawH = targetW / imgRatio;
-        } else {
-          drawH = targetH;
-          drawW = targetH * imgRatio;
-        }
-        ctx.drawImage(img, (targetW - drawW) / 2, (targetH - drawH) / 2, drawW, drawH);
-      } else {
-        // Cover: centre-crop to fill
-        let sx = 0, sy = 0, sw = img.width, sh = img.height;
-        if (imgRatio > targetRatio) {
-          sw = img.height * targetRatio;
-          sx = (img.width - sw) / 2;
-        } else {
-          sh = img.width / targetRatio;
-          sy = (img.height - sh) / 2;
-        }
-        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH);
-      }
-
-      URL.revokeObjectURL(url);
-      canvas.toBlob(blob => resolve(blob!), 'image/jpeg', 0.82);
-    };
-    img.src = url;
-  });
 
 // ── QuickCard ────────────────────────────────────────────────────────────────
 const QuickCard: React.FC<{
   title: string;
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
   image: string;
   onClick: () => void;
   color: string;
   onEditImage?: () => void;
-}> = ({ title, icon, image, onClick, color, onEditImage }) => (
+}> = ({ title, image, onClick, onEditImage }) => (
   <motion.div
     whileHover={{ scale: 1.02 }}
     whileTap={{ scale: 0.98 }}
@@ -109,9 +57,6 @@ const QuickCard: React.FC<{
     )}
 
     <div className="absolute bottom-0 left-0 p-6 w-full">
-      <div className="mb-2 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3 origin-bottom-left">
-        {icon}
-      </div>
       <h3 className="text-xl font-bold text-white group-hover:text-gray-100 transition-colors">
         {title}
       </h3>
@@ -128,13 +73,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [images, setImages] = useState<Record<string, string>>(DEFAULT_IMAGES);
 
-  // Modal state
-  const [editingKey, setEditingKey] = useState<{ key: string; w: number; h: number } | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
-  const [cropMode, setCropMode] = useState<'cover' | 'contain'>('cover');
-  const [isProcessing, setIsProcessing] = useState(false);
+  // Editor de imágenes (tarjetas, banner y portadas de las secciones)
+  const [editing, setEditing] = useState<ImageEditTarget | null>(null);
 
   // ── Load data ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -147,7 +87,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
     });
 
     // Nav sections
-    const excludedIds = ['inicio', 'aulas', 'formacion', 'recursos', 'ia', 'claustro', 'fotos'];
+    const excludedIds = ['inicio', 'aulas', 'formacion', 'recursos', 'ia', 'claustro', 'fotos', 'aplicaciones'];
     setDynamicSections(getNavItems().filter(item => !excludedIds.includes(item.id)));
 
     // Photos carousel
@@ -166,83 +106,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
     return () => clearInterval(timer);
   }, [randomPhotos]);
 
-  // ── Modal helpers ──────────────────────────────────────────────────────────
-  const openEditModal = (key: string, w: number, h: number) => {
-    setEditingKey({ key, w, h });
-    setSelectedFile(null);
-    setPreviewUrl(null);
-    setCropMode('cover');
-  };
-
-  const closeModal = () => {
-    setEditingKey(null);
-    setSelectedFile(null);
-    setPreviewBlob(null);
-    setPreviewUrl(prev => {
-      if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev);
-      return null;
-    });
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !editingKey) return;
-    setSelectedFile(file);
-    setIsProcessing(true);
-    const blob = await processImage(file, editingKey.w, editingKey.h, cropMode);
-    setPreviewBlob(blob);
-    setPreviewUrl(prev => {
-      if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev);
-      return URL.createObjectURL(blob);
-    });
-    setIsProcessing(false);
-  };
-
-  const handleModeChange = async (mode: 'cover' | 'contain') => {
-    setCropMode(mode);
-    if (selectedFile && editingKey) {
-      setIsProcessing(true);
-      const blob = await processImage(selectedFile, editingKey.w, editingKey.h, mode);
-      setPreviewBlob(blob);
-      setPreviewUrl(prev => {
-        if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev);
-        return URL.createObjectURL(blob);
-      });
-      setIsProcessing(false);
-    }
-  };
-
-  const handleSave = async () => {
-    if (!previewBlob || !editingKey) return;
-    setIsProcessing(true);
-    try {
-      const res = await fetch(
-        `/api/upload?type=dashboard&key=${encodeURIComponent(editingKey.key)}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'image/jpeg',
-            'X-Filename': encodeURIComponent(`${editingKey.key}.jpg`),
-          },
-          body: previewBlob,
-        }
-      );
-      const data = await res.json();
-      if (data.success) {
-        saveDashboardImage(editingKey.key, data.url);
-        setImages(prev => ({ ...prev, [editingKey.key]: data.url }));
-        closeModal();
-      }
-    } catch (err) {
-      console.error('Dashboard image upload error:', err);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   // Shorthand: returns edit handler only for admins
-  const editBtn = (key: string, w: number, h: number) =>
-    isAdmin ? () => openEditModal(key, w, h) : undefined;
+  const editBtn = (key: string, w: number, h: number, label = 'Tarjeta de acceso') =>
+    isAdmin ? () => setEditing({ key, w, h, label }) : undefined;
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -266,7 +132,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
 
         {isAdmin && (
           <button
-            onClick={() => openEditModal('hero', 1200, 400)}
+            onClick={() => setEditing({ key: 'hero', w: 1200, h: 400, label: 'Banner principal' })}
             className="absolute top-4 right-4 z-20 p-1.5 rounded-lg bg-black/50 hover:bg-black/70 text-white opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all backdrop-blur-sm"
             title="Cambiar imagen"
           >
@@ -297,7 +163,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <QuickCard
             title="Reserva de Aulas"
-            icon={<img src="https://prisma.bibliohispa.es/suite/iconos/aulas.webp" alt="" className="w-14 h-14 object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)]" />}
             color="blue"
             image={images['card-aulas']}
             onClick={() => window.open('https://aulas.bibliohispa.es', '_blank')}
@@ -305,7 +170,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
           />
           <QuickCard
             title="Formación"
-            icon={<img src="https://prisma.bibliohispa.es/suite/iconos/profesor.webp" alt="" className="w-14 h-14 object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)]" />}
             color="green"
             image={images['card-formacion']}
             onClick={() => onNavigate('formacion')}
@@ -313,7 +177,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
           />
           <QuickCard
             title="Recursos Didácticos"
-            icon={<img src="https://prisma.bibliohispa.es/suite/iconos/recursos.webp" alt="" className="w-14 h-14 object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)]" />}
             color="yellow"
             image={images['card-recursos']}
             onClick={() => onNavigate('recursos-generales')}
@@ -321,7 +184,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
           />
           <QuickCard
             title="IA en Educación"
-            icon={<img src="https://prisma.bibliohispa.es/suite/iconos/ia.webp" alt="" className="w-14 h-14 object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)]" />}
             color="purple"
             image={images['card-ia']}
             onClick={() => onNavigate('ia-educacion')}
@@ -329,7 +191,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
           />
           <QuickCard
             title="Claustro Virtual"
-            icon={<img src="https://prisma.bibliohispa.es/suite/iconos/claustro.webp" alt="" className="w-14 h-14 object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)]" />}
             color="red"
             image={images['card-claustro']}
             onClick={() => onNavigate('documentos-profesorado')}
@@ -337,11 +198,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
           />
           <QuickCard
             title="Fotos de Eventos"
-            icon={<img src="https://prisma.bibliohispa.es/suite/iconos/galeria.webp" alt="" className="w-14 h-14 object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)]" />}
             color="pink"
             image={images['card-fotos']}
             onClick={() => onNavigate('fotos-eventos')}
             onEditImage={editBtn('card-fotos', 500, 300)}
+          />
+          <QuickCard
+            title="Aplicaciones"
+            color="blue"
+            image={images['card-aplicaciones']}
+            onClick={() => onNavigate('aplicaciones')}
+            onEditImage={editBtn('card-aplicaciones', 500, 300)}
           />
         </div>
       </div>
@@ -350,21 +217,44 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
       {dynamicSections.length > 0 && (
         <div>
           <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-            <img src="https://prisma.bibliohispa.es/suite/iconos/intranet.webp" alt="" className="w-9 h-9 object-contain" />
             Otras Secciones
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {dynamicSections.map(section => (
-              <motion.div
-                key={section.id}
-                whileHover={{ y: -5 }}
-                onClick={() => onNavigate(section.path || '')}
-                className="bg-white dark:bg-zinc-800 p-6 rounded-xl shadow-md border border-gray-100 dark:border-zinc-700 cursor-pointer hover:border-hispa-blue transition-colors flex flex-col items-center text-center gap-3"
-              >
-                <img src="https://prisma.bibliohispa.es/suite/iconos/intranet.webp" alt="" className="w-16 h-16 object-contain" />
-                <h3 className="font-bold text-gray-800 dark:text-gray-100">{section.label}</h3>
-              </motion.div>
-            ))}
+            {dynamicSections.map(section => {
+              // Portada opcional: con imagen se ve como las tarjetas fijas; sin ella, tarjeta sencilla
+              const clave = `card-sec-${section.id}`;
+              const portada = images[clave];
+              if (portada) {
+                return (
+                  <QuickCard
+                    key={section.id}
+                    title={section.label}
+                    color="blue"
+                    image={portada}
+                    onClick={() => onNavigate(section.path || '')}
+                    onEditImage={editBtn(clave, 500, 300, `Portada de «${section.label}»`)}
+                  />
+                );
+              }
+              return (
+                <motion.div
+                  key={section.id}
+                  whileHover={{ y: -5 }}
+                  onClick={() => onNavigate(section.path || '')}
+                  className="relative group bg-white dark:bg-zinc-800 p-6 min-h-[120px] rounded-2xl shadow-md border border-gray-100 dark:border-zinc-700 cursor-pointer hover:border-hispa-blue transition-colors flex flex-col items-center justify-center text-center gap-3"
+                >
+                  <h3 className="font-bold text-gray-800 dark:text-gray-100">{section.label}</h3>
+                  {isAdmin && (
+                    <button
+                      onClick={e => { e.stopPropagation(); setEditing({ key: clave, w: 500, h: 300, label: `Portada de «${section.label}»` }); }}
+                      className="text-xs font-medium text-hispa-blue hover:underline flex items-center gap-1.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                    >
+                      <ImagePlus size={14} /> Añadir portada
+                    </button>
+                  )}
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -373,7 +263,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
       {randomPhotos.length > 0 && (
         <div>
           <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-            <img src="https://prisma.bibliohispa.es/suite/iconos/galeria.webp" alt="" className="w-9 h-9 object-contain" />
             Galería Reciente
           </h2>
           <div className="relative w-full h-[300px] md:h-[400px] rounded-2xl overflow-hidden shadow-xl bg-black">
@@ -422,104 +311,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
         </button>
       </div>
 
-      {/* ── Image Edit Modal ────────────────────────────────────────────────── */}
-      <AnimatePresence>
-        {editingKey && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
-            onClick={closeModal}
-          >
-            <motion.div
-              initial={{ scale: 0.92, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.92, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={e => e.stopPropagation()}
-              className="bg-white dark:bg-zinc-900 rounded-2xl p-6 w-full max-w-md shadow-2xl border border-gray-100 dark:border-zinc-700"
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between mb-1">
-                <h3 className="text-lg font-bold text-gray-800 dark:text-white">Cambiar imagen</h3>
-                <button
-                  onClick={closeModal}
-                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
-                {editingKey.key === 'hero' ? 'Banner principal' : 'Tarjeta de acceso'} · {editingKey.w} × {editingKey.h} px
-              </p>
-
-              {/* Preview */}
-              <div
-                className="w-full rounded-xl overflow-hidden mb-4 bg-gray-100 dark:bg-zinc-800 relative flex items-center justify-center"
-                style={{ aspectRatio: `${editingKey.w}/${editingKey.h}` }}
-              >
-                {previewUrl ? (
-                  <img src={previewUrl} alt="Vista previa" className="w-full h-full object-cover" />
-                ) : (
-                  <img src="https://prisma.bibliohispa.es/suite/iconos/galeria.webp" alt="" className="w-16 h-16 object-contain opacity-70" />
-                )}
-                {isProcessing && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-xl">
-                    <div className="w-7 h-7 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  </div>
-                )}
-              </div>
-
-              {/* Mode selector */}
-              <div className="flex gap-2 mb-4">
-                <button
-                  onClick={() => handleModeChange('cover')}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${cropMode === 'cover'
-                    ? 'bg-hispa-red text-white'
-                    : 'bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-zinc-700'
-                    }`}
-                >
-                  Recortar para rellenar
-                </button>
-                <button
-                  onClick={() => handleModeChange('contain')}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${cropMode === 'contain'
-                    ? 'bg-hispa-red text-white'
-                    : 'bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-zinc-700'
-                    }`}
-                >
-                  Ajustar sin recortar
-                </button>
-              </div>
-
-              {/* File input */}
-              <label className="block w-full cursor-pointer">
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleFileChange}
-                />
-                <div className="w-full py-3 border-2 border-dashed border-gray-300 dark:border-zinc-600 rounded-xl text-center text-gray-500 dark:text-gray-400 hover:border-hispa-red dark:hover:border-hispa-blue transition text-sm flex items-center justify-center gap-2">
-                  <Upload size={15} />
-                  {selectedFile ? selectedFile.name : 'Seleccionar imagen'}
-                </div>
-              </label>
-
-              {/* Save */}
-              <button
-                onClick={handleSave}
-                disabled={!previewBlob || isProcessing}
-                className="mt-4 w-full py-3 bg-hispa-red text-white rounded-xl font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition flex items-center justify-center gap-2"
-              >
-                <Check size={16} />
-                Guardar imagen
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* ── Editor de imágenes ──────────────────────────────────────────────── */}
+      <ImageEditModal
+        target={editing}
+        onClose={() => setEditing(null)}
+        onSaved={(key, url) => setImages(prev => ({ ...prev, [key]: url }))}
+        onRemove={editing?.key.startsWith('card-sec-') ? () => {
+          const key = editing.key;
+          removeDashboardImage(key);
+          setImages(prev => { const n = { ...prev }; delete n[key]; return n; });
+        } : undefined}
+      />
 
     </div>
   );

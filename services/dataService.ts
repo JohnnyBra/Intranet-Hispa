@@ -249,13 +249,18 @@ export const loadAllData = async (): Promise<void> => {
     }
   }));
 
-  // Migration: ensure 'aplicaciones' nav item exists in already-saved nav data
+  // Migración: «Aplicaciones» es una sección fija. Se asegura que existe y que va
+  // con las fijas (antes de «Claustro Virtual»), no al final con las creadas a mano.
   const navItems = getFromStore<NavItem[]>('hispa_nav', INITIAL_NAV_ITEMS);
-  if (!navItems.some(item => item.id === 'aplicaciones')) {
-    saveToStore('hispa_nav', [
-      ...navItems,
-      { id: 'aplicaciones', label: 'Aplicaciones', iconName: 'AppWindow', path: 'aplicaciones' },
-    ]);
+  const aplicaciones: NavItem = navItems.find(item => item.id === 'aplicaciones')
+    || { id: 'aplicaciones', label: 'Aplicaciones', iconName: 'AppWindow', path: 'aplicaciones' };
+  const resto = navItems.filter(item => item.id !== 'aplicaciones');
+  const iClaustro = resto.findIndex(item => item.id === 'claustro');
+  const ordenado = iClaustro >= 0
+    ? [...resto.slice(0, iClaustro), aplicaciones, ...resto.slice(iClaustro)]
+    : [...resto, aplicaciones];
+  if (ordenado.map(i => i.id).join() !== navItems.map(i => i.id).join()) {
+    saveToStore('hispa_nav', ordenado);
   }
 };
 
@@ -375,6 +380,12 @@ const DASHBOARD_IMAGES_KEY = 'hispa_dashboard_images';
 
 export const getDashboardImages = (): DashboardImages =>
   getFromStore<DashboardImages>(DASHBOARD_IMAGES_KEY, { cards: {} });
+
+export const removeDashboardImage = (key: string): void => {
+  const current = getDashboardImages();
+  delete current.cards[key];
+  saveToStore(DASHBOARD_IMAGES_KEY, current);
+};
 
 export const saveDashboardImage = (key: string, dataUrl: string): void => {
   const current = getDashboardImages();
