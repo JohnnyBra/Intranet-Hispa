@@ -361,7 +361,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, currentUser })
                 onClick={() => onNavigate(section.path || '')}
                 className="bg-white dark:bg-zinc-800 p-6 rounded-xl shadow-md border border-gray-100 dark:border-zinc-700 cursor-pointer hover:border-hispa-blue transition-colors flex flex-col items-center text-center gap-3"
               >
-                <img src="https://prisma.bibliohispa.es/suite/iconos/intranet.webp" alt="" className="w-16 h-16 object-contain drop-shadow-lg" />
+                <img src="https://prisma.bibliohispa.es/suite/iconos/intranet.webp" alt="" className="w-16 h-16 object-contain" />
                 <h3 className="font-bold text-gray-800 dark:text-gray-100">{section.label}</h3>
               </motion.div>
             ))}

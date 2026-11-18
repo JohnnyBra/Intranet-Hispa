@@ -159,7 +159,7 @@ export const AppsView: React.FC<AppsViewProps> = ({ currentUser }) => {
             >
               {app.imageUrl
                 ? <img src={app.imageUrl} alt={app.name} className="w-full h-full object-cover" />
-                : <img src="https://prisma.bibliohispa.es/suite/iconos/apps.webp" alt="" className="w-20 h-20 object-contain drop-shadow-lg" />
+                : <img src="https://prisma.bibliohispa.es/suite/iconos/apps.webp" alt="" className="w-20 h-20 object-contain" />
               }
               <a
                 href={app.url}
